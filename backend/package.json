@@ -1,0 +1,26 @@
+{
+  "name": "lexa-odds-backend",
+  "version": "1.0.0",
+  "description": "Ingestion service for BTC 5m Up/Down odds and BTC price with % changes",
+  "type": "module",
+  "main": "dist/worker.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/worker.js",
+    "dev": "tsx src/worker.ts",
+    "init-db": "tsx src/init-db.ts",
+    "query": "tsx src/query.ts"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/pg": "^8.10.9",
+    "@types/ws": "^8.18.1",
+    "dotenv": "^16.3.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
