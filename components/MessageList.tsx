@@ -10,23 +10,23 @@ interface MessageListProps {
 
 export default function MessageList({ messages, isLoading }: MessageListProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {messages.map((message) => (
         <div
           key={message.id}
           className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
         >
           <div
-            className={`max-w-[80%] rounded-lg p-4 ${
+            className={`max-w-[82%] rounded-2xl px-5 py-4 ${
               message.role === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-800 shadow-md'
+                ? 'bg-gradient-to-br from-neon-cyan/20 to-neon-magenta/20 border border-neon-cyan/30 text-white shadow-glow-cyan'
+                : 'bg-void-card/80 border border-void-border text-gray-200'
             }`}
           >
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <p className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">{message.content}</p>
             {message.markets && message.markets.length > 0 && (
               <div className="mt-4 space-y-3">
-                <p className="font-semibold mb-2 text-sm">Markets:</p>
+                <p className="font-display text-xs font-semibold uppercase tracking-wider text-neon-cyan mb-2">Markets</p>
                 {message.markets.map((market) => (
                   <MarketCard key={market.id} market={market} />
                 ))}
@@ -37,11 +37,11 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
       ))}
       {isLoading && (
         <div className="flex justify-start">
-          <div className="bg-white rounded-lg p-4 shadow-md">
+          <div className="rounded-2xl border border-void-border bg-void-card/80 px-5 py-4">
             <div className="flex space-x-2">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="w-2.5 h-2.5 bg-neon-cyan rounded-full animate-bounce opacity-90" style={{ animationDelay: '0ms' }} />
+              <div className="w-2.5 h-2.5 bg-neon-magenta rounded-full animate-bounce opacity-90" style={{ animationDelay: '150ms' }} />
+              <div className="w-2.5 h-2.5 bg-neon-cyan rounded-full animate-bounce opacity-90" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         </div>
@@ -49,4 +49,3 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
     </div>
   )
 }
-

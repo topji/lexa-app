@@ -160,10 +160,10 @@ export default function CryptoPage() {
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data)
-        if (msg.topic === 'crypto_prices_chainlink' && msg.payload?.value != null) {
-          const sym = msg.payload.symbol as string
-          pricesRef.current[sym] = msg.payload.value
+        if (msg.topic === 'crypto_prices_chainlink' && msg.payload?.value != null && msg.payload?.symbol != null) {
+          const sym = String(msg.payload.symbol).toLowerCase()
           const value = msg.payload.value as number
+          pricesRef.current[sym] = value
           setMarkets((prev) => {
             const out = { ...prev }
             CRYPTO_HUB_ITEMS.forEach((item) => {
@@ -183,49 +183,85 @@ export default function CryptoPage() {
     }
   }, [])
 
+  const assetColor: Record<string, string> = {
+    Bitcoin: '#f7931a',
+    Ethereum: '#627eea',
+    Solana: '#14f195',
+    XRP: '#23292f',
+  }
+  const getColor = (label: string) => assetColor[label] ?? '#00f5ff'
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="text-gray-500 text-sm">Loading crypto markets…</div>
+      <div className="min-h-screen bg-void flex items-center justify-center bg-grid px-4">
+        <div className="font-display text-neon-cyan uppercase tracking-widest text-sm animate-pulse">Loading crypto markets…</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">Crypto · Up or Down</h1>
-            <p className="text-gray-500 text-sm mt-0.5">BTC 5m & 15m · ETH, SOL, XRP 15m · Chainlink resolution</p>
-          </div>
+    <div className="min-h-screen bg-void text-white bg-grid">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="mb-6 sm:mb-10">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
+            <span className="text-glow-cyan">CRYPTO</span>
+            <span className="text-gray-400 font-sans font-semibold ml-2">· Up or Down</span>
+          </h1>
+          <p className="font-sans text-gray-500 text-xs sm:text-sm mt-1 tracking-wide">BTC 5m & 15m · ETH, SOL, XRP 15m · Chainlink resolution</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {CRYPTO_HUB_ITEMS.map((item) => {
             const hrefSlug = item.slug ?? item.id
             const m = markets[hrefSlug]
             if (!m) return null
+            const accent = getColor(item.label)
+            const upPct = m.upPrice * 100
             return (
               <Link
                 key={hrefSlug}
                 href={`/crypto/${hrefSlug}`}
-                className="block rounded-xl border border-[#1e293b] bg-[#0f172a]/80 hover:border-[#334155] hover:bg-[#0f172a] transition-all"
+                className="group block rounded-2xl border border-void-border bg-void-card/90 hover:border-neon-cyan/40 transition-all card-glow overflow-hidden"
               >
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg font-semibold text-white">{item.label}</span>
-                    <span className="text-xs text-gray-500 tabular-nums">{item.window}</span>
+                <div className="h-1 sm:h-1.5 shrink-0" style={{ backgroundColor: accent }} />
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0 flex items-center justify-center font-display font-bold text-white text-sm sm:text-base"
+                        style={{ backgroundColor: accent }}
+                      >
+                        {item.label.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-display font-semibold text-white uppercase tracking-wide truncate group-hover:text-neon-cyan transition-colors">
+                          {item.label}
+                        </p>
+                        <p className="font-mono text-[10px] sm:text-xs text-gray-500 tabular-nums">{item.window}</p>
+                      </div>
+                    </div>
+                    <span className="font-mono text-lg sm:text-xl font-bold text-white tabular-nums shrink-0">
+                      {m.livePrice != null ? `$${m.livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                    </span>
                   </div>
-                  <div className="text-2xl font-mono font-semibold text-white mb-2">
-                    {m.livePrice != null ? `$${m.livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex-1 h-2 rounded-full bg-void overflow-hidden flex">
+                      <div
+                        className="h-full bg-neon-green transition-all duration-300"
+                        style={{ width: `${upPct}%` }}
+                      />
+                      <div
+                        className="h-full bg-neon-red transition-all duration-300"
+                        style={{ width: `${100 - upPct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex gap-3 text-sm">
-                    <span className="text-green-400">Up {(m.upPrice * 100).toFixed(1)}%</span>
-                    <span className="text-red-400">Down {(m.downPrice * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Vol ${(m.volume || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="text-neon-green font-semibold">Up {(m.upPrice * 100).toFixed(1)}%</span>
+                    <span className="text-neon-red font-semibold">Down {(m.downPrice * 100).toFixed(1)}%</span>
+                    <span className="font-sans text-gray-500">
+                      Vol ${(m.volume || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    </span>
                   </div>
                 </div>
               </Link>

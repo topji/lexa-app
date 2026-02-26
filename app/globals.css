@@ -3,26 +3,65 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+  --void: #050508;
+  --void-card: #0c0c12;
+  --void-border: #1a1a24;
+  --neon-cyan: #00f5ff;
+  --neon-magenta: #ff00aa;
+  --neon-green: #00ff88;
+  --neon-red: #ff3366;
+  --neon-purple: #a855f7;
+  --glow-cyan: rgba(0, 245, 255, 0.4);
+  --glow-magenta: rgba(255, 0, 170, 0.35);
+  --glow-green: rgba(0, 255, 136, 0.35);
+  --glow-red: rgba(255, 51, 102, 0.35);
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: var(--void);
+  color: #e2e8f0;
 }
 
+/* Subtle grid overlay for depth */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Neon text glow */
+.text-glow-cyan {
+  text-shadow: 0 0 20px var(--glow-cyan), 0 0 40px var(--glow-cyan);
+}
+.text-glow-magenta {
+  text-shadow: 0 0 20px var(--glow-magenta), 0 0 40px var(--glow-magenta);
+}
+.text-glow-green {
+  text-shadow: 0 0 16px var(--glow-green);
+}
+.text-glow-red {
+  text-shadow: 0 0 16px var(--glow-red);
+}
+
+/* Card glow on hover */
+.card-glow {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+.card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(0, 245, 255, 0.15), 0 0 30px rgba(0, 245, 255, 0.08), 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Input focus ring neon */
+.input-glow:focus {
+  box-shadow: 0 0 0 2px var(--void), 0 0 0 4px var(--neon-cyan), 0 0 20px var(--glow-cyan);
+}
+
+/* Button pulse for CTAs */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px var(--glow-cyan); }
+  50% { box-shadow: 0 0 32px var(--glow-cyan), 0 0 48px rgba(0, 245, 255, 0.2); }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

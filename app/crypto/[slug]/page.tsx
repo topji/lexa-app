@@ -430,28 +430,28 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
   if (!slug) return null
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Link href="/crypto" className="text-gray-500 hover:text-white text-sm">
+    <div className="min-h-screen bg-void text-white bg-grid">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <Link href="/crypto" className="font-sans text-gray-500 hover:text-neon-cyan text-sm tracking-wide transition-colors">
             ← Crypto
           </Link>
         </div>
 
         {loading && (
-          <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/50 p-12 text-center text-gray-500 text-sm">
+          <div className="rounded-2xl border border-void-border bg-void-card/80 p-12 text-center font-display text-neon-cyan/80 uppercase tracking-widest text-sm animate-pulse">
             Loading…
           </div>
         )}
 
         {isVirtualSlug && !event && !loading && (
-          <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/50 p-12 text-center text-gray-400 text-sm">
+          <div className="rounded-2xl border border-void-border bg-void-card/80 p-12 text-center font-sans text-gray-400 text-sm">
             {redirectingToLatest ? 'Opening current market…' : 'No market found. Try again or go back to Crypto.'}
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-red-300 text-sm">
+          <div className="rounded-2xl border border-neon-red/50 bg-neon-red/10 p-6 font-sans text-neon-red text-sm">
             {error}
           </div>
         )}
@@ -459,20 +459,20 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
         {!loading && !error && event && (
           <>
             {/* Polymarket-style: header with logo + title + timeframe */}
-            <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0"
-                  style={{ backgroundColor: assetColor }}
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-display font-bold text-lg sm:text-xl shrink-0 border border-void-border"
+                  style={{ backgroundColor: assetColor, boxShadow: `0 0 24px ${assetColor}40` }}
                 >
                   {config?.label?.charAt(0) ?? '?'}
                 </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">
+                <div className="min-w-0">
+                  <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">
                     {(config?.label && config.label !== slug ? config.label : getAssetSearchFromSlug(slug))} Up or Down
-                    {slug?.toLowerCase().includes('5m') ? ' - 5 min' : ' - 15 min'}
+                    {slug?.toLowerCase().includes('5m') ? ' · 5 min' : ' · 15 min'}
                   </h1>
-                  <p className="text-gray-500 text-sm mt-0.5">
+                  <p className="font-sans text-gray-500 text-sm mt-0.5 tracking-wide">
                     {event.startDate
                       ? new Date(event.startDate).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' ET'
                       : event.title}
@@ -480,41 +480,41 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-red-400 font-mono font-semibold text-lg tabular-nums">
+                <div className="font-display text-neon-red font-bold text-xl tabular-nums text-glow-red">
                   {countdown}
                 </div>
-                <div className="text-gray-500 text-xs mt-0.5">Time remaining</div>
+                <div className="font-sans text-gray-500 text-xs mt-0.5 uppercase tracking-wider">Time remaining</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-12 gap-6">
+            <div className="grid grid-cols-12 gap-4 sm:gap-6">
               {/* Left: CURRENT PRICE + Price to beat + Chart + Order Book */}
-              <div className="col-span-12 lg:col-span-8 space-y-4">
+              <div className="col-span-12 lg:col-span-8 space-y-3 sm:space-y-4">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
-                    <div className="text-blue-400 text-xs font-medium uppercase tracking-wider mb-0.5">
+                    <div className="font-display text-neon-cyan text-xs font-semibold uppercase tracking-widest mb-0.5">
                       Current price
                     </div>
-                    <div className="text-3xl font-mono font-semibold text-white tabular-nums">
+                    <div className="text-3xl font-mono font-bold text-white tabular-nums">
                       {livePrice != null ? `$${livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}` : '—'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-0.5">
+                    <div className="font-sans text-gray-500 text-xs font-medium uppercase tracking-wider mb-0.5">
                       Price to beat
                     </div>
-                    <div className="text-xl font-mono font-medium text-gray-400 tabular-nums">
+                    <div className="text-xl font-mono font-semibold text-gray-400 tabular-nums">
                       {chartData.length > 0
                         ? `$${chartData[0].value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}`
                         : '—'}
                     </div>
                   </div>
                   {rtdsStatus === 'connected' && (
-                    <span className="text-green-400 text-xs">● Live</span>
+                    <span className="text-neon-green text-xs font-semibold text-glow-green">● Live</span>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/80 overflow-hidden">
+                <div className="rounded-2xl border border-void-border bg-void-card/80 overflow-hidden card-glow">
                   <RealtimePriceChart
                     data={chartData}
                     height={360}
@@ -525,27 +525,27 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                 </div>
 
                 <div className="flex gap-4 text-sm mt-2">
-                  <span className="text-green-400 font-medium">
+                  <span className="text-neon-green font-semibold text-glow-green">
                     Up {throttledUpPrice != null ? `${(throttledUpPrice * 100).toFixed(1)}%` : '—'}
                   </span>
-                  <span className="text-red-400 font-medium">
+                  <span className="text-neon-red font-semibold text-glow-red">
                     Down {throttledDownPrice != null ? `${(throttledDownPrice * 100).toFixed(1)}%` : '—'}
                   </span>
                 </div>
 
                 <div className="mt-4">
                   <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                    <span className="font-medium text-gray-400">Order book</span>
+                    <span className="font-display font-semibold text-gray-400 uppercase tracking-wider">Order book</span>
                     <span className="font-mono">
                       ${displayVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })} Vol.
                     </span>
                     {wsStatus === 'connected' && (
-                      <span className="text-green-400 text-xs">● Live</span>
+                      <span className="text-neon-green text-xs font-semibold text-glow-green">● Live</span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                     <div>
-                      <div className="flex justify-between text-gray-500 mb-1">
+                      <div className="flex justify-between text-gray-500 mb-1 font-sans">
                         <span>Bids</span>
                         <span>Size</span>
                       </div>
@@ -553,9 +553,9 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                         {orderBook.bids.slice(0, 8).map((level, idx) => (
                           <div
                             key={`bid-${idx}-${level.price}-${level.size}`}
-                            className="flex justify-between rounded bg-green-500/5 px-2 py-1"
+                            className="flex justify-between rounded-lg bg-neon-green/10 border border-neon-green/20 px-2 py-1"
                           >
-                            <span className="text-green-300">
+                            <span className="text-neon-green font-semibold">
                               {(level.price * 100).toFixed(1)}%
                             </span>
                             <span className="text-gray-400">
@@ -564,12 +564,12 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                           </div>
                         ))}
                         {orderBook.bids.length === 0 && (
-                          <div className="text-gray-600 py-1">No bids</div>
+                          <div className="text-gray-600 py-1 font-sans">No bids</div>
                         )}
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-gray-500 mb-1">
+                      <div className="flex justify-between text-gray-500 mb-1 font-sans">
                         <span>Asks</span>
                         <span>Size</span>
                       </div>
@@ -577,9 +577,9 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                         {orderBook.asks.slice(0, 8).map((level, idx) => (
                           <div
                             key={`ask-${idx}-${level.price}-${level.size}`}
-                            className="flex justify-between rounded bg-red-500/5 px-2 py-1"
+                            className="flex justify-between rounded-lg bg-neon-red/10 border border-neon-red/20 px-2 py-1"
                           >
-                            <span className="text-red-300">
+                            <span className="text-neon-red font-semibold">
                               {(level.price * 100).toFixed(1)}%
                             </span>
                             <span className="text-gray-400">
@@ -588,7 +588,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                           </div>
                         ))}
                         {orderBook.asks.length === 0 && (
-                          <div className="text-gray-600 py-1">No asks</div>
+                          <div className="text-gray-600 py-1 font-sans">No asks</div>
                         )}
                       </div>
                     </div>
@@ -597,14 +597,14 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
 
                 <div className="mt-4">
                   <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                    <span className="font-medium text-gray-400">Recent trades</span>
+                    <span className="font-display font-semibold text-gray-400 uppercase tracking-wider">Recent trades</span>
                     {recentTrades.length > 0 && (
                       <span className="text-xs text-gray-500">
                         Last {Math.min(recentTrades.length, 10)}
                       </span>
                     )}
                   </div>
-                  <div className="rounded-lg border border-[#1e293b] bg-[#020617] max-h-40 overflow-y-auto">
+                  <div className="rounded-xl border border-void-border bg-void-card max-h-40 overflow-y-auto">
                     {recentTrades.slice(0, 10).map((t, idx) => {
                       const tsMs = t.timestamp > 1e12 ? t.timestamp : t.timestamp * 1000
                       const d = new Date(tsMs)
@@ -615,11 +615,11 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                         second: '2-digit',
                       })
                       const isBuy = t.side === 'BUY'
-                      const color = isBuy ? 'text-green-300' : 'text-red-300'
+                      const color = isBuy ? 'text-neon-green' : 'text-neon-red'
                       return (
                         <div
                           key={`${t.timestamp}-${idx}-${t.price}-${t.size}`}
-                          className="flex items-center justify-between px-3 py-1.5 border-b border-[#111827]/80 last:border-b-0 text-xs"
+                          className="flex items-center justify-between px-3 py-1.5 border-b border-void-border last:border-b-0 text-xs"
                         >
                           <span className="text-gray-500">{timeStr}</span>
                           <div className="flex items-center gap-3">
@@ -642,8 +642,8 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
 
               {/* Right: Countdown + Up/Down buttons + CTA (Polymarket trading panel style) */}
               <div className="col-span-12 lg:col-span-4">
-                <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/90 p-5 sticky top-6">
-                  <div className="text-red-400 font-mono font-semibold text-xl tabular-nums mb-6">
+                <div className="rounded-2xl border border-void-border bg-void-card/90 p-5 sticky top-6 card-glow">
+                  <div className="font-display text-neon-red font-bold text-xl tabular-nums mb-6 text-glow-red">
                     {countdown}
                   </div>
 
@@ -659,7 +659,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                     href={polymarketUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full rounded-xl border border-[#334155] text-gray-300 hover:text-white hover:border-[#475569] text-center py-2.5 text-sm font-medium transition-colors mt-4"
+                    className="block w-full rounded-xl border border-void-border text-gray-300 hover:text-neon-cyan hover:border-neon-cyan/50 text-center py-2.5 text-sm font-display font-semibold uppercase tracking-wide transition-colors mt-4"
                   >
                     Open on Polymarket →
                   </a>
@@ -672,7 +672,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                     polymarketUrl={polymarketUrl}
                   />
 
-                  <p className="text-gray-500 text-xs mt-4 text-center">
+                  <p className="font-sans text-gray-500 text-xs mt-4 text-center">
                     By trading, you agree to Polymarket&apos;s Terms of Use.
                   </p>
                 </div>
@@ -680,22 +680,22 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
             </div>
 
             {isResolved && (
-              <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/80 p-5 mt-6">
+              <div className="rounded-2xl border border-void-border bg-void-card/80 p-5 mt-6">
                 {redirectingToLatest ? (
-                  <p className="text-gray-400 text-sm">Updating to latest {config?.label ?? 'crypto'} market…</p>
+                  <p className="font-sans text-gray-400 text-sm">Updating to latest {config?.label ?? 'crypto'} market…</p>
                 ) : (
-                  <p className="text-gray-400 text-sm">
-                    This market has resolved. <Link href="/crypto" className="text-blue-400 hover:underline">View crypto hub</Link> for other markets.
+                  <p className="font-sans text-gray-400 text-sm">
+                    This market has resolved. <Link href="/crypto" className="text-neon-cyan hover:underline">View crypto hub</Link> for other markets.
                   </p>
                 )}
               </div>
             )}
 
-            <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/50 p-5 mt-6">
-              <div className="text-gray-500 text-xs uppercase tracking-wider mb-2">Rules</div>
-              <p className="text-sm text-gray-400 whitespace-pre-wrap">{event.description}</p>
+            <div className="rounded-2xl border border-void-border bg-void-card/50 p-5 mt-6">
+              <div className="font-display text-gray-500 text-xs uppercase tracking-widest mb-2">Rules</div>
+              <p className="font-sans text-sm text-gray-400 whitespace-pre-wrap">{event.description}</p>
               {config?.resolutionUrl && (
-                <a href={config.resolutionUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-xs mt-2 inline-block">
+                <a href={config.resolutionUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan hover:underline text-xs mt-2 inline-block font-sans">
                   Resolution source →
                 </a>
               )}

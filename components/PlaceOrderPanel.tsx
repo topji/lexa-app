@@ -144,9 +144,9 @@ export function PlaceOrderPanel({
 
   if (!isConnected) {
     return (
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/50 p-4 text-center">
-        <p className="text-gray-500 text-sm mb-2">Connect your wallet to place orders</p>
-        <a href={polymarketUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm">
+      <div className="rounded-2xl border border-void-border bg-void-card/50 p-4 text-center">
+        <p className="font-sans text-gray-500 text-sm mb-2">Connect your wallet to place orders</p>
+        <a href={polymarketUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan hover:underline text-sm font-display font-semibold uppercase tracking-wide">
           Or trade on Polymarket →
         </a>
       </div>
@@ -155,13 +155,13 @@ export function PlaceOrderPanel({
 
   if (!onPolygon) {
     return (
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/50 p-4 text-center">
-        <p className="text-gray-500 text-sm mb-2">Switch to Polygon to trade</p>
+      <div className="rounded-2xl border border-void-border bg-void-card/50 p-4 text-center">
+        <p className="font-sans text-gray-500 text-sm mb-2">Switch to Polygon to trade</p>
         <button
           type="button"
           onClick={handleSwitchToPolygon}
           disabled={switching}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-xl bg-neon-cyan text-void px-4 py-2 text-sm font-display font-bold uppercase tracking-wide hover:bg-neon-cyan/90 disabled:opacity-50 transition-colors"
         >
           {switching ? 'Switching…' : 'Switch to Polygon'}
         </button>
@@ -170,29 +170,29 @@ export function PlaceOrderPanel({
   }
 
   return (
-    <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/90 p-5 space-y-4">
+    <div className="rounded-2xl border border-void-border bg-void-card/90 p-5 space-y-4">
       {initializing && (
-        <p className="text-xs text-blue-400">
+        <p className="text-xs text-neon-cyan font-sans">
           {step || 'Preparing trading session…'}
         </p>
       )}
       {!initializing && tradingError && (
-        <p className="text-xs text-red-400" role="alert">
+        <p className="text-xs text-neon-red font-sans" role="alert">
           {tradingError}
         </p>
       )}
-      <div className="flex rounded-lg border border-[#1e293b] p-0.5 bg-[#0a0a0f]">
+      <div className="flex rounded-xl border border-void-border p-0.5 bg-void">
         <button
           type="button"
           onClick={() => setOrderMode('market')}
-          className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${orderMode === 'market' ? 'bg-[#1e293b] text-white' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex-1 rounded-lg px-3 py-2 text-xs font-display font-semibold uppercase tracking-wide transition-colors ${orderMode === 'market' ? 'bg-void-border text-white' : 'text-gray-500 hover:text-gray-300'}`}
         >
           Market
         </button>
         <button
           type="button"
           onClick={() => setOrderMode('limit')}
-          className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${orderMode === 'limit' ? 'bg-[#1e293b] text-white' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex-1 rounded-lg px-3 py-2 text-xs font-display font-semibold uppercase tracking-wide transition-colors ${orderMode === 'limit' ? 'bg-void-border text-white' : 'text-gray-500 hover:text-gray-300'}`}
         >
           Limit (GTC)
         </button>
@@ -200,7 +200,7 @@ export function PlaceOrderPanel({
 
       {orderMode === 'market' ? (
         <div>
-          <label className="text-gray-500 text-xs font-medium uppercase tracking-wider block mb-1">
+          <label className="font-display text-gray-500 text-xs font-semibold uppercase tracking-widest block mb-1">
             Amount (USD)
           </label>
           <input
@@ -210,13 +210,13 @@ export function PlaceOrderPanel({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
-            className="w-full rounded-lg border border-[#1e293b] bg-[#0a0a0f] px-4 py-3 text-white font-mono placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input-glow w-full rounded-xl border border-void-border bg-void px-4 py-3 text-white font-mono placeholder-gray-600 focus:outline-none focus:border-neon-cyan"
           />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-gray-500 text-xs font-medium uppercase tracking-wider block mb-1">
+            <label className="font-display text-gray-500 text-xs font-semibold uppercase tracking-widest block mb-1">
               Price (0–1)
             </label>
             <input
@@ -227,11 +227,11 @@ export function PlaceOrderPanel({
               value={limitPrice}
               onChange={(e) => setLimitPrice(e.target.value)}
               placeholder="0.50"
-              className="w-full rounded-lg border border-[#1e293b] bg-[#0a0a0f] px-4 py-3 text-white font-mono placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="input-glow w-full rounded-xl border border-void-border bg-void px-4 py-3 text-white font-mono placeholder-gray-600 focus:outline-none focus:border-neon-cyan"
             />
           </div>
           <div>
-            <label className="text-gray-500 text-xs font-medium uppercase tracking-wider block mb-1">
+            <label className="font-display text-gray-500 text-xs font-semibold uppercase tracking-widest block mb-1">
               Size (shares)
             </label>
             <input
@@ -241,7 +241,7 @@ export function PlaceOrderPanel({
               value={limitSize}
               onChange={(e) => setLimitSize(e.target.value)}
               placeholder="10"
-              className="w-full rounded-lg border border-[#1e293b] bg-[#0a0a0f] px-4 py-3 text-white font-mono placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="input-glow w-full rounded-xl border border-void-border bg-void px-4 py-3 text-white font-mono placeholder-gray-600 focus:outline-none focus:border-neon-cyan"
             />
           </div>
         </div>
@@ -252,35 +252,35 @@ export function PlaceOrderPanel({
           type="button"
           onClick={() => (orderMode === 'market' ? placeMarketOrder('up') : placeLimitOrder('up'))}
           disabled={loading !== null || (orderMode === 'market' ? !canPlaceMarket : !canPlaceLimit)}
-          className="rounded-xl bg-green-500/20 border-2 border-green-500/50 hover:border-green-400 hover:bg-green-500/30 p-3 text-center transition-colors disabled:opacity-50"
+          className="rounded-xl bg-neon-green/20 border-2 border-neon-green/50 hover:border-neon-green hover:bg-neon-green/30 p-3 text-center transition-colors disabled:opacity-50"
         >
-          <div className="text-green-400 font-medium text-sm">Buy Up</div>
+          <div className="text-neon-green font-display font-semibold text-sm uppercase tracking-wide">Buy Up</div>
           <div className="text-lg font-mono font-bold text-white tabular-nums">
             {upPrice != null ? `${Math.round(upPrice * 100)}¢` : '—'}
           </div>
-          {loading === 'up' && <div className="text-xs text-gray-400 mt-1">Placing…</div>}
+          {loading === 'up' && <div className="text-xs text-gray-400 mt-1 font-sans">Placing…</div>}
         </button>
         <button
           type="button"
           onClick={() => (orderMode === 'market' ? placeMarketOrder('down') : placeLimitOrder('down'))}
           disabled={loading !== null || (orderMode === 'market' ? !canPlaceMarket : !canPlaceLimit)}
-          className="rounded-xl bg-[#1e293b] border-2 border-[#334155] hover:border-[#475569] p-3 text-center transition-colors disabled:opacity-50"
+          className="rounded-xl bg-void-border border-2 border-void-border hover:border-neon-red/50 hover:bg-neon-red/10 p-3 text-center transition-colors disabled:opacity-50"
         >
-          <div className="text-gray-400 font-medium text-sm">Buy Down</div>
+          <div className="text-neon-red font-display font-semibold text-sm uppercase tracking-wide">Buy Down</div>
           <div className="text-lg font-mono font-bold text-white tabular-nums">
             {downPrice != null ? `${Math.round(downPrice * 100)}¢` : '—'}
           </div>
-          {loading === 'down' && <div className="text-xs text-gray-400 mt-1">Placing…</div>}
+          {loading === 'down' && <div className="text-xs text-gray-400 mt-1 font-sans">Placing…</div>}
         </button>
       </div>
 
       {message && (
-        <p className={`text-sm ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+        <p className={`font-sans text-sm ${message.type === 'success' ? 'text-neon-green' : 'text-neon-red'}`}>
           {message.text}
         </p>
       )}
 
-      <p className="text-gray-500 text-xs">
+      <p className="font-sans text-gray-500 text-xs">
         {orderMode === 'market'
           ? 'Market orders (FOK) execute immediately at best available price. Min $1. You need USDC.e on Polygon.'
           : 'Limit orders (GTC) rest in the book until filled or cancelled. Get market info from Gamma API.'}

@@ -25,21 +25,21 @@ export default function MessageInput({ onSendMessage, disabled }: MessageInputPr
   }
 
   return (
-    <div className="border-t border-gray-200 p-4 bg-white">
-      <div className="flex space-x-2">
+    <div className="border-t border-void-border p-3 sm:p-4 bg-void-card/95 shrink-0">
+      <div className="flex gap-2 sm:gap-3">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Ask about Polymarket markets..."
-          className="flex-1 resize-none border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder:text-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-600"
+          className="input-glow flex-1 min-w-0 resize-none rounded-lg sm:rounded-xl border border-void-border bg-void px-3 py-2.5 sm:px-4 sm:py-3 font-sans text-sm sm:text-[15px] text-white placeholder:text-gray-500 focus:outline-none focus:border-neon-cyan disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           rows={1}
           disabled={disabled}
         />
         <button
           onClick={handleSend}
           disabled={disabled || !input.trim()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+          className={`shrink-0 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl bg-neon-cyan text-void font-display font-bold text-xs sm:text-sm uppercase tracking-wider hover:bg-neon-cyan/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-glow-cyan ${!(disabled || !input.trim()) ? 'animate-pulse-glow' : ''}`}
         >
           Send
         </button>
@@ -47,4 +47,3 @@ export default function MessageInput({ onSendMessage, disabled }: MessageInputPr
     </div>
   )
 }
-
