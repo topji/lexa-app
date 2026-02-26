@@ -19,11 +19,11 @@ export default function SideNav() {
 
   const navContent = (
     <>
-      <div className="p-4 sm:p-5 border-b border-void-border flex items-center justify-between sm:block">
+      <div className="p-4 sm:p-5 border-b border-lexa-border flex items-center justify-between sm:block">
         <Link
           href="/"
           onClick={() => setMobileOpen(false)}
-          className="flex items-center gap-3 text-lg font-display font-bold tracking-tight text-white hover:text-neon-cyan transition-colors"
+          className="flex items-center gap-3 text-lg font-display font-bold tracking-tight text-white hover:text-lexa-accent transition-colors"
         >
           <Image src="/lexa-logo.PNG" alt="Lexa" width={36} height={36} className="rounded-lg shrink-0" />
           <span>Lexa</span>
@@ -39,7 +39,7 @@ export default function SideNav() {
           </svg>
         </button>
       </div>
-      <p className="font-sans text-xs text-gray-500 mt-0.5 px-4 sm:px-5 sm:ml-9 pb-4 sm:pb-0 border-b border-void-border lg:border-b-0">Polymarket assistant</p>
+      <p className="font-sans text-xs text-gray-500 mt-0.5 px-4 sm:px-5 sm:ml-9 pb-4 sm:pb-0 border-b border-lexa-border lg:border-b-0">Polymarket assistant</p>
       <nav className="flex flex-col gap-0.5 p-3">
         {navItems.map(({ href, label }) => {
           const isActive = pathname === href || (href !== '/' && pathname.startsWith(href))
@@ -50,8 +50,8 @@ export default function SideNav() {
               onClick={() => setMobileOpen(false)}
               className={`rounded-xl px-3 py-2.5 text-sm font-display font-semibold uppercase tracking-wide transition-colors ${
                 isActive
-                  ? 'bg-neon-cyan text-void shadow-glow-cyan'
-                  : 'text-gray-400 hover:bg-void-border hover:text-white'
+                  ? 'bg-lexa-gradient text-white shadow-glow-lexa'
+                  : 'text-gray-400 hover:bg-lexa-accent/10 hover:text-white'
               }`}
             >
               {label}
@@ -59,7 +59,7 @@ export default function SideNav() {
           )
         })}
       </nav>
-      <div className="mt-auto p-3 border-t border-void-border">
+      <div className="mt-auto p-3 border-t border-lexa-border">
         <ConnectWallet />
         <GaslessWalletDeploy />
       </div>
@@ -72,7 +72,7 @@ export default function SideNav() {
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-30 p-2 rounded-xl bg-void-card border border-void-border text-white hover:border-neon-cyan/50 transition-colors"
+        className="lg:hidden fixed top-4 left-4 z-30 p-2 rounded-xl bg-lexa-glass border border-lexa-border text-white hover:border-lexa-accent transition-colors"
         aria-label="Open menu"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +91,7 @@ export default function SideNav() {
 
       {/* Sidebar: drawer on mobile, fixed on desktop */}
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-full w-56 flex-col border-r border-void-border bg-void-card/98 backdrop-blur-sm transition-transform duration-200 ease-out lg:translate-x-0 lg:z-20
+        className={`fixed left-0 top-0 z-50 flex h-full w-56 flex-col border-r border-lexa-border bg-void backdrop-blur-sm transition-transform duration-200 ease-out lg:translate-x-0 lg:z-20
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {navContent}

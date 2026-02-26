@@ -194,7 +194,7 @@ export default function CryptoPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center bg-grid px-4">
-        <div className="font-display text-neon-cyan uppercase tracking-widest text-sm animate-pulse">Loading crypto markets…</div>
+        <div className="font-display text-lexa-accent uppercase tracking-widest text-sm animate-pulse">Loading crypto markets…</div>
       </div>
     )
   }
@@ -204,7 +204,7 @@ export default function CryptoPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="mb-6 sm:mb-10">
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
-            <span className="text-glow-cyan">CRYPTO</span>
+            <span className="text-lexa-gradient">CRYPTO</span>
             <span className="text-gray-400 font-sans font-semibold ml-2">· Up or Down</span>
           </h1>
           <p className="font-sans text-gray-500 text-xs sm:text-sm mt-1 tracking-wide">BTC 5m & 15m · ETH, SOL, XRP 15m · Chainlink resolution</p>
@@ -221,7 +221,7 @@ export default function CryptoPage() {
               <Link
                 key={hrefSlug}
                 href={`/crypto/${hrefSlug}`}
-                className="group block rounded-2xl border border-void-border bg-void-card/90 hover:border-neon-cyan/40 transition-all card-glow overflow-hidden"
+                className="group block rounded-2xl border border-lexa-border bg-lexa-glass hover:border-lexa-accent/50 transition-all card-glow overflow-hidden"
               >
                 <div className="h-1 sm:h-1.5 shrink-0" style={{ backgroundColor: accent }} />
                 <div className="p-4 sm:p-5">
@@ -234,7 +234,7 @@ export default function CryptoPage() {
                         {item.label.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-display font-semibold text-white uppercase tracking-wide truncate group-hover:text-neon-cyan transition-colors">
+                        <p className="font-display font-semibold text-white uppercase tracking-wide truncate group-hover:text-lexa-accent transition-colors">
                           {item.label}
                         </p>
                         <p className="font-mono text-[10px] sm:text-xs text-gray-500 tabular-nums">{item.window}</p>

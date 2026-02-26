@@ -14,20 +14,31 @@ module.exports = {
       colors: {
         void: {
           DEFAULT: '#050508',
-          card: '#0c0c12',
-          border: '#1a1a24',
+        },
+        lexa: {
+          accent: '#5FD3FF',
+          cyan: '#3EC7F4',
+          'blue-mid': '#3A7BFF',
+          'blue-deep': '#1F4BFF',
+          glass: 'rgba(58, 123, 255, 0.08)',
+          border: 'rgba(95, 211, 255, 0.25)',
         },
         neon: {
-          cyan: '#00f5ff',
-          magenta: '#ff00aa',
           green: '#00ff88',
           red: '#ff3366',
-          purple: '#a855f7',
         },
       },
+      backgroundColor: {
+        'lexa-glass': 'rgba(58, 123, 255, 0.08)',
+      },
+      borderColor: {
+        'lexa-border': 'rgba(95, 211, 255, 0.25)',
+      },
+      backgroundImage: {
+        'lexa-gradient': 'linear-gradient(135deg, #3EC7F4 0%, #3A7BFF 50%, #1F4BFF 100%)',
+      },
       boxShadow: {
-        'glow-cyan': '0 0 20px rgba(0, 245, 255, 0.3), 0 0 40px rgba(0, 245, 255, 0.15)',
-        'glow-magenta': '0 0 20px rgba(255, 0, 170, 0.25), 0 0 40px rgba(255, 0, 170, 0.1)',
+        'glow-lexa': '0 0 20px rgba(95, 211, 255, 0.3), 0 0 40px rgba(95, 211, 255, 0.15)',
         'glow-green': '0 0 16px rgba(0, 255, 136, 0.3)',
         'glow-red': '0 0 16px rgba(255, 51, 102, 0.3)',
       },
@@ -35,4 +46,3 @@ module.exports = {
   },
   plugins: [],
 }
-

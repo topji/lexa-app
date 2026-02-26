@@ -66,13 +66,13 @@ export function CryptoPriceTicker() {
   }, [])
 
   return (
-    <div className="mb-4 sm:mb-6 rounded-xl sm:rounded-2xl border border-void-border bg-void-card/80 px-3 py-3 sm:px-5 sm:py-4 card-glow">
+    <div className="mb-4 sm:mb-6 rounded-xl sm:rounded-2xl border border-lexa-border bg-lexa-glass px-3 py-3 sm:px-5 sm:py-4 card-glow">
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-3 sm:gap-6 justify-items-center sm:justify-between">
         {ASSETS.map(({ symbol, label }) => {
           const v = prices[symbol]
           return (
             <div key={symbol} className="flex items-baseline gap-1.5 sm:gap-2 font-mono min-w-0">
-              <span className="font-display text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-neon-cyan shrink-0">{label}</span>
+              <span className="font-display text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-lexa-accent shrink-0">{label}</span>
               <span className="text-sm sm:text-lg font-bold tabular-nums text-white truncate">
                 {v != null
                   ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

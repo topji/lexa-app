@@ -71,8 +71,8 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col min-h-[320px] h-[50vh] sm:h-[520px] md:h-[580px] lg:h-[620px] max-h-[calc(100vh-280px)] rounded-xl sm:rounded-2xl overflow-hidden border border-void-border bg-void-card/90 backdrop-blur-sm card-glow flex-1 min-h-0">
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-gradient-to-b from-void-card to-void min-h-0">
+    <div className="flex flex-col min-h-[320px] h-[50vh] sm:h-[520px] md:h-[580px] lg:h-[620px] max-h-[calc(100vh-280px)] rounded-xl sm:rounded-2xl overflow-hidden border border-lexa-border bg-lexa-glass backdrop-blur-sm card-glow flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-gradient-to-b from-lexa-glass to-void min-h-0">
         <MessageList messages={messages} isLoading={isLoading} />
         <div ref={messagesEndRef} />
       </div>

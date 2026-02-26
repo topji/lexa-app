@@ -4,15 +4,17 @@
 
 :root {
   --void: #050508;
-  --void-card: #0c0c12;
-  --void-border: #1a1a24;
-  --neon-cyan: #00f5ff;
-  --neon-magenta: #ff00aa;
+  /* Lexa theme */
+  --lexa-cyan: #3EC7F4;
+  --lexa-blue-mid: #3A7BFF;
+  --lexa-blue-deep: #1F4BFF;
+  --lexa-accent: #5FD3FF;
+  --lexa-glass: rgba(58, 123, 255, 0.08);
+  --lexa-border: rgba(95, 211, 255, 0.25);
+  --lexa-glow: rgba(95, 211, 255, 0.35);
+  /* Semantic (Up/Down) */
   --neon-green: #00ff88;
   --neon-red: #ff3366;
-  --neon-purple: #a855f7;
-  --glow-cyan: rgba(0, 245, 255, 0.4);
-  --glow-magenta: rgba(255, 0, 170, 0.35);
   --glow-green: rgba(0, 255, 136, 0.35);
   --glow-red: rgba(255, 51, 102, 0.35);
 }
@@ -30,12 +32,20 @@ body {
   background-size: 48px 48px;
 }
 
-/* Neon text glow */
-.text-glow-cyan {
-  text-shadow: 0 0 20px var(--glow-cyan), 0 0 40px var(--glow-cyan);
+/* Lexa primary gradient (hero, logo, CTA) */
+.bg-lexa-gradient {
+  background: linear-gradient(135deg, #3EC7F4 0%, #3A7BFF 50%, #1F4BFF 100%);
 }
-.text-glow-magenta {
-  text-shadow: 0 0 20px var(--glow-magenta), 0 0 40px var(--glow-magenta);
+.text-lexa-gradient {
+  background: linear-gradient(135deg, #3EC7F4 0%, #3A7BFF 50%, #1F4BFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Lexa accent glow */
+.text-glow-lexa {
+  text-shadow: 0 0 20px var(--lexa-glow), 0 0 40px var(--lexa-glow);
 }
 .text-glow-green {
   text-shadow: 0 0 16px var(--glow-green);
@@ -44,23 +54,23 @@ body {
   text-shadow: 0 0 16px var(--glow-red);
 }
 
-/* Card glow on hover */
+/* Card: glass background + accent border */
 .card-glow {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 .card-glow:hover {
-  box-shadow: 0 0 0 1px rgba(0, 245, 255, 0.15), 0 0 30px rgba(0, 245, 255, 0.08), 0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1px var(--lexa-border), 0 0 30px var(--lexa-glow), 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
-/* Input focus ring neon */
+/* Input focus: accent border glow */
 .input-glow:focus {
-  box-shadow: 0 0 0 2px var(--void), 0 0 0 4px var(--neon-cyan), 0 0 20px var(--glow-cyan);
+  box-shadow: 0 0 0 2px var(--void), 0 0 0 4px var(--lexa-accent), 0 0 20px var(--lexa-glow);
 }
 
-/* Button pulse for CTAs */
+/* CTA button pulse */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px var(--glow-cyan); }
-  50% { box-shadow: 0 0 32px var(--glow-cyan), 0 0 48px rgba(0, 245, 255, 0.2); }
+  0%, 100% { box-shadow: 0 0 20px var(--lexa-glow); }
+  50% { box-shadow: 0 0 32px var(--lexa-glow), 0 0 48px rgba(95, 211, 255, 0.2); }
 }
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;

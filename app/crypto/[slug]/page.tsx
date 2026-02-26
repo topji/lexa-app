@@ -433,19 +433,19 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
     <div className="min-h-screen bg-void text-white bg-grid">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex items-center gap-3 mb-4 sm:mb-6">
-          <Link href="/crypto" className="font-sans text-gray-500 hover:text-neon-cyan text-sm tracking-wide transition-colors">
+          <Link href="/crypto" className="font-sans text-gray-500 hover:text-lexa-accent text-sm tracking-wide transition-colors">
             ← Crypto
           </Link>
         </div>
 
         {loading && (
-          <div className="rounded-2xl border border-void-border bg-void-card/80 p-12 text-center font-display text-neon-cyan/80 uppercase tracking-widest text-sm animate-pulse">
+          <div className="rounded-2xl border border-lexa-border bg-lexa-glass p-12 text-center font-display text-lexa-accent/80 uppercase tracking-widest text-sm animate-pulse">
             Loading…
           </div>
         )}
 
         {isVirtualSlug && !event && !loading && (
-          <div className="rounded-2xl border border-void-border bg-void-card/80 p-12 text-center font-sans text-gray-400 text-sm">
+          <div className="rounded-2xl border border-lexa-border bg-lexa-glass p-12 text-center font-sans text-gray-400 text-sm">
             {redirectingToLatest ? 'Opening current market…' : 'No market found. Try again or go back to Crypto.'}
           </div>
         )}
@@ -462,7 +462,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
             <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-display font-bold text-lg sm:text-xl shrink-0 border border-void-border"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-display font-bold text-lg sm:text-xl shrink-0 border border-lexa-border"
                   style={{ backgroundColor: assetColor, boxShadow: `0 0 24px ${assetColor}40` }}
                 >
                   {config?.label?.charAt(0) ?? '?'}
@@ -492,7 +492,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
               <div className="col-span-12 lg:col-span-8 space-y-3 sm:space-y-4">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
-                    <div className="font-display text-neon-cyan text-xs font-semibold uppercase tracking-widest mb-0.5">
+                    <div className="font-display text-lexa-accent text-xs font-semibold uppercase tracking-widest mb-0.5">
                       Current price
                     </div>
                     <div className="text-3xl font-mono font-bold text-white tabular-nums">
@@ -514,7 +514,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-void-border bg-void-card/80 overflow-hidden card-glow">
+                <div className="rounded-2xl border border-lexa-border bg-lexa-glass overflow-hidden card-glow">
                   <RealtimePriceChart
                     data={chartData}
                     height={360}
@@ -604,7 +604,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                       </span>
                     )}
                   </div>
-                  <div className="rounded-xl border border-void-border bg-void-card max-h-40 overflow-y-auto">
+                  <div className="rounded-xl border border-lexa-border bg-lexa-glass max-h-40 overflow-y-auto">
                     {recentTrades.slice(0, 10).map((t, idx) => {
                       const tsMs = t.timestamp > 1e12 ? t.timestamp : t.timestamp * 1000
                       const d = new Date(tsMs)
@@ -619,7 +619,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                       return (
                         <div
                           key={`${t.timestamp}-${idx}-${t.price}-${t.size}`}
-                          className="flex items-center justify-between px-3 py-1.5 border-b border-void-border last:border-b-0 text-xs"
+                          className="flex items-center justify-between px-3 py-1.5 border-b border-lexa-border last:border-b-0 text-xs"
                         >
                           <span className="text-gray-500">{timeStr}</span>
                           <div className="flex items-center gap-3">
@@ -642,7 +642,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
 
               {/* Right: Countdown + Up/Down buttons + CTA (Polymarket trading panel style) */}
               <div className="col-span-12 lg:col-span-4">
-                <div className="rounded-2xl border border-void-border bg-void-card/90 p-5 sticky top-6 card-glow">
+                <div className="rounded-2xl border border-lexa-border bg-lexa-glass p-5 sticky top-6 card-glow">
                   <div className="font-display text-neon-red font-bold text-xl tabular-nums mb-6 text-glow-red">
                     {countdown}
                   </div>
@@ -659,7 +659,7 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
                     href={polymarketUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full rounded-xl border border-void-border text-gray-300 hover:text-neon-cyan hover:border-neon-cyan/50 text-center py-2.5 text-sm font-display font-semibold uppercase tracking-wide transition-colors mt-4"
+                    className="block w-full rounded-xl border border-lexa-border text-gray-300 hover:text-lexa-accent hover:border-lexa-accent/50 text-center py-2.5 text-sm font-display font-semibold uppercase tracking-wide transition-colors mt-4"
                   >
                     Open on Polymarket →
                   </a>
@@ -680,22 +680,22 @@ export default function CryptoMarketPage({ params }: { params: { slug: string } 
             </div>
 
             {isResolved && (
-              <div className="rounded-2xl border border-void-border bg-void-card/80 p-5 mt-6">
+              <div className="rounded-2xl border border-lexa-border bg-lexa-glass p-5 mt-6">
                 {redirectingToLatest ? (
                   <p className="font-sans text-gray-400 text-sm">Updating to latest {config?.label ?? 'crypto'} market…</p>
                 ) : (
                   <p className="font-sans text-gray-400 text-sm">
-                    This market has resolved. <Link href="/crypto" className="text-neon-cyan hover:underline">View crypto hub</Link> for other markets.
+                    This market has resolved. <Link href="/crypto" className="text-lexa-accent hover:underline">View crypto hub</Link> for other markets.
                   </p>
                 )}
               </div>
             )}
 
-            <div className="rounded-2xl border border-void-border bg-void-card/50 p-5 mt-6">
+            <div className="rounded-2xl border border-lexa-border bg-lexa-glass p-5 mt-6">
               <div className="font-display text-gray-500 text-xs uppercase tracking-widest mb-2">Rules</div>
               <p className="font-sans text-sm text-gray-400 whitespace-pre-wrap">{event.description}</p>
               {config?.resolutionUrl && (
-                <a href={config.resolutionUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan hover:underline text-xs mt-2 inline-block font-sans">
+                <a href={config.resolutionUrl} target="_blank" rel="noopener noreferrer" className="text-lexa-accent hover:underline text-xs mt-2 inline-block font-sans">
                   Resolution source →
                 </a>
               )}

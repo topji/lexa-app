@@ -1,24 +1,24 @@
 'use client'
 
 const MOCK_STATS = {
-  totalVolume: 1_247_392,
-  totalPredictions: 184_392,
-  users: 12_847,
-  volume24h: 1_247_392,
-  chatRequests: 56_203,
+  totalVolume: 1_400_000,
+  totalPredictions: 212_051,
+  users: 14_774,
+  volume24h: 1_400_000,
+  chatRequests: 64_634,
 }
 
 const MOCK_LEADERBOARD = [
-  { rank: 1, username: 'crypto_whale', volume: 124_520, predictions: 892 },
-  { rank: 2, username: 'alpha_trader', volume: 98_340, predictions: 756 },
-  { rank: 3, username: 'poly_bull', volume: 87_102, predictions: 634 },
-  { rank: 4, username: 'moon_shot', volume: 76_445, predictions: 521 },
-  { rank: 5, username: 'defi_maxi', volume: 65_230, predictions: 488 },
-  { rank: 6, username: 'lexa_fan', volume: 58_901, predictions: 412 },
-  { rank: 7, username: 'odds_master', volume: 52_334, predictions: 387 },
-  { rank: 8, username: 'signal_seeker', volume: 48_120, predictions: 356 },
-  { rank: 9, username: 'btc_diamond', volume: 44_567, predictions: 298 },
-  { rank: 10, username: 'prediction_pro', volume: 41_203, predictions: 267 },
+  { rank: 1, username: 'crypto_whale', volume: 143_198, predictions: 1026 },
+  { rank: 2, username: 'alpha_trader', volume: 113_091, predictions: 870 },
+  { rank: 3, username: 'poly_bull', volume: 100_167, predictions: 729 },
+  { rank: 4, username: 'moon_shot', volume: 87_924, predictions: 599 },
+  { rank: 5, username: 'defi_maxi', volume: 75_015, predictions: 561 },
+  { rank: 6, username: 'lexa_fan', volume: 67_736, predictions: 474 },
+  { rank: 7, username: 'odds_master', volume: 60_184, predictions: 445 },
+  { rank: 8, username: 'signal_seeker', volume: 55_338, predictions: 409 },
+  { rank: 9, username: 'btc_diamond', volume: 51_251, predictions: 343 },
+  { rank: 10, username: 'prediction_pro', volume: 47_384, predictions: 307 },
 ]
 
 function StatCard({
@@ -33,7 +33,7 @@ function StatCard({
   className?: string
 }) {
   return (
-    <div className={`rounded-2xl border border-void-border bg-void-card/90 p-5 sm:p-6 card-glow ${className}`}>
+    <div className={`rounded-2xl border border-lexa-border bg-lexa-glass p-5 sm:p-6 card-glow ${className}`}>
       <p className="font-display text-xs font-semibold uppercase tracking-widest text-gray-500 mb-1">{label}</p>
       <p className="font-mono text-2xl sm:text-3xl font-bold text-white tabular-nums">{value}</p>
       {sub != null && <p className="font-sans text-xs text-gray-500 mt-1">{sub}</p>}
@@ -50,7 +50,7 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="mb-8">
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
-            <span className="text-glow-cyan">DASHBOARD</span>
+            <span className="text-lexa-gradient">DASHBOARD</span>
           </h1>
           <p className="font-sans text-gray-500 text-sm mt-1 tracking-wide">Platform overview and top traders</p>
         </div>
@@ -68,8 +68,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="rounded-2xl border border-void-border bg-void-card/90 overflow-hidden card-glow">
-          <div className="p-4 sm:p-5 border-b border-void-border">
+        <div className="rounded-2xl border border-lexa-border bg-lexa-glass overflow-hidden card-glow">
+          <div className="p-4 sm:p-5 border-b border-lexa-border">
             <h2 className="font-display text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
               Leaderboard
             </h2>
@@ -78,7 +78,7 @@ export default function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[400px]">
               <thead>
-                <tr className="border-b border-void-border">
+                <tr className="border-b border-lexa-border">
                   <th className="text-left font-display text-xs font-semibold uppercase tracking-widest text-gray-500 py-3 px-4 sm:px-5">#</th>
                   <th className="text-left font-display text-xs font-semibold uppercase tracking-widest text-gray-500 py-3 px-4 sm:px-5">Username</th>
                   <th className="text-right font-display text-xs font-semibold uppercase tracking-widest text-gray-500 py-3 px-4 sm:px-5">Volume</th>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
                 {MOCK_LEADERBOARD.map((row) => (
                   <tr
                     key={row.rank}
-                    className="border-b border-void-border last:border-b-0 hover:bg-void-border/30 transition-colors"
+                    className="border-b border-lexa-border last:border-b-0 hover:bg-lexa-accent/10 transition-colors"
                   >
                     <td className="py-3 px-4 sm:px-5">
                       <span
@@ -100,14 +100,14 @@ export default function DashboardPage() {
                               ? 'bg-gray-400/20 text-gray-300'
                               : row.rank === 3
                                 ? 'bg-amber-700/30 text-amber-600'
-                                : 'bg-void-border text-gray-400'
+                                : 'bg-lexa-border/50 text-gray-400'
                         }`}
                       >
                         {row.rank}
                       </span>
                     </td>
                     <td className="py-3 px-4 sm:px-5 font-sans text-sm font-medium text-white">{row.username}</td>
-                    <td className="py-3 px-4 sm:px-5 text-right font-mono font-semibold text-neon-cyan tabular-nums">
+                    <td className="py-3 px-4 sm:px-5 text-right font-mono font-semibold text-lexa-accent tabular-nums">
                       ${row.volume.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 sm:px-5 text-right font-mono text-sm text-gray-400 tabular-nums hidden sm:table-cell">
