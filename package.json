@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.686.0",
     "@polymarket/builder-relayer-client": "^0.0.8",
     "@polymarket/clob-client": "^5.2.3",
     "ethers": "^5.7.2",

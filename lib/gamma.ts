@@ -138,8 +138,9 @@ export async function fetchGammaEvents(options: {
   limit?: number
   offset?: number
   closed?: boolean
+  noCache?: boolean
 }): Promise<PolymarketMarket[]> {
-  const { limit = 100, offset = 0, closed = false } = options
+  const { limit = 100, offset = 0, closed = false, noCache = false } = options
 
   const params = new URLSearchParams({
     order: 'id',
@@ -151,7 +152,7 @@ export async function fetchGammaEvents(options: {
 
   const res = await fetch(`${GAMMA_API_BASE}/events?${params}`, {
     headers: { Accept: 'application/json' },
-    next: { revalidate: 60 },
+    ...(noCache ? { cache: 'no-store' as const } : { next: { revalidate: 60 } }),
   })
 
   if (!res.ok) {
@@ -176,8 +177,9 @@ export async function fetchGammaEventsEndingSoon(options: {
   endDateMin: string // ISO date-time, e.g. now
   endDateMax: string // ISO date-time, e.g. now + 1 hour
   limit?: number
+  noCache?: boolean
 }): Promise<PolymarketMarket[]> {
-  const { endDateMin, endDateMax, limit = 100 } = options
+  const { endDateMin, endDateMax, limit = 100, noCache = false } = options
 
   const params = new URLSearchParams({
     closed: 'false',
@@ -190,7 +192,7 @@ export async function fetchGammaEventsEndingSoon(options: {
 
   const res = await fetch(`${GAMMA_API_BASE}/events?${params}`, {
     headers: { Accept: 'application/json' },
-    next: { revalidate: 30 },
+    ...(noCache ? { cache: 'no-store' as const } : { next: { revalidate: 30 } }),
   })
 
   if (!res.ok) {

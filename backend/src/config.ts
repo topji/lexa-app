@@ -14,4 +14,6 @@ export const config = {
   gammaApiBase: 'https://gamma-api.polymarket.com',
   sampleIntervalMs: 1000,
   historySeconds: 5,
+  // Logical market code for our own schema: btc-5m, btc-15m, eth-5m, eth-15m, sol-5m, sol-15m
+  marketCode: process.env.MARKET_CODE ?? 'btc-5m',
 } as const

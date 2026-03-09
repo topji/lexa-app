@@ -12,7 +12,7 @@ Ingestion service that stores **Up/Down odds** (and BTC price) every second for 
 
    Set in `.env`:
 
-   - `DATABASE_URL` – PostgreSQL connection URL (required).
+   - `DATABASE_URL` – PostgreSQL connection URL (required). For **Neon**, paste the connection string from the dashboard (with `?sslmode=require` or `?sslmode=verify-full`). The client enables SSL automatically for Neon URLs.
    - `MARKET_SLUG` – optional; defaults to `btc-updown-5m-1771880100`.
 
 2. **Database**

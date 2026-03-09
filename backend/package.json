@@ -12,6 +12,8 @@
     "query": "tsx src/query.ts"
   },
   "dependencies": {
+    "@chainlink/data-streams-sdk": "^1.1.0",
+    "@neondatabase/serverless": "^1.0.2",
     "pg": "^8.11.3",
     "ws": "^8.16.0"
   },

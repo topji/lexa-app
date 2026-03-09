@@ -1,4 +1,4 @@
-import { OpenAI } from 'openai'
+import { BedrockRuntimeClient, ConverseStreamCommand } from '@aws-sdk/client-bedrock-runtime'
 import { PolymarketMarket } from '@/types/polymarket'
 import {
   filterMarketsByCategory,
@@ -8,11 +8,10 @@ import {
   filterOpenMarkets,
   sortMarketsByLatest,
 } from './polymarket'
-import { fetchGammaEvents } from './gamma'
+import { fetchGammaEvents, fetchGammaEventsEndingSoon } from './gamma'
 
-const client = new OpenAI({
-  baseURL: 'https://router.huggingface.co/v1',
-  apiKey: process.env.HF_TOKEN || '',
+const bedrockClient = new BedrockRuntimeClient({
+  region: process.env.AWS_REGION || 'us-east-1',
 })
 
 interface ParsedQuery {
@@ -150,13 +149,24 @@ function parseUserQuery(query: string): ParsedQuery {
 export async function processChatQuery(userQuery: string): Promise<{
   response: string
   markets: PolymarketMarket[]
+  provider: 'bedrock' | 'fallback'
 }> {
   try {
     // Parse the user query
     const parsed = parseUserQuery(userQuery)
 
+    const wantsShortInterval = /\b(5m|5\s*min|15m|15\s*min)\b/i.test(userQuery)
+
     // Fetch active markets from Gamma (same source as /markets page and crypto soonest)
-    let markets = await fetchGammaEvents({ limit: 150, closed: false })
+    // For crypto short-interval queries, prefer "ending soon" windows (current/next) rather than generic newest events.
+    let markets = wantsShortInterval
+      ? await fetchGammaEventsEndingSoon({
+          endDateMin: new Date().toISOString(),
+          endDateMax: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+          limit: 150,
+          noCache: true,
+        })
+      : await fetchGammaEvents({ limit: 150, closed: false, noCache: true })
 
     // Filter for open markets (by default, show only active markets)
     markets = filterOpenMarkets(markets)
@@ -191,30 +201,7 @@ export async function processChatQuery(userQuery: string): Promise<{
       markets = markets.slice(0, 20)
     }
 
-    // Generate AI response
-    const apiKey = process.env.HF_TOKEN
-    
-    if (!apiKey) {
-      // Fallback response without AI
-      let response = `I found ${markets.length} market(s) matching your query.`
-      
-      if (markets.length === 0) {
-        response = "I couldn't find any markets matching your criteria. Try asking about crypto, politics, or other categories."
-      } else if (parsed.category) {
-        response = `I found ${markets.length} ${parsed.category} market(s).`
-        if (parsed.minYesRate) {
-          response += ` All markets have a Yes rate of ${parsed.minYesRate}% or higher.`
-        }
-      } else if (parsed.minYesRate) {
-        response = `I found ${markets.length} market(s) with a Yes rate of ${parsed.minYesRate}% or higher.`
-      }
-      
-      return {
-        response,
-        markets,
-      }
-    }
-
+    // Generate AI response via AWS Bedrock
     const systemPrompt = `You are Lexa, a helpful AI assistant that helps users find and understand Polymarket prediction markets. 
 You should provide clear, concise responses about the markets you find. Be friendly and informative.`
 
@@ -226,25 +213,48 @@ ${markets.map((m, i) => `${i + 1}. ${m.question} (Yes: ${m.outcomes?.[0]?.price 
 Please provide a helpful response to the user's query. Include the market count and summarize the results naturally.`
 
     try {
-      const completion = await client.chat.completions.create({
-        model: 'openai/gpt-oss-20b:groq',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      })
+      const modelId =
+        process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
 
-      const response = completion.choices[0]?.message?.content || 
+      const bedrockResponse = await bedrockClient.send(
+        new ConverseStreamCommand({
+          modelId,
+          system: [{ text: systemPrompt }],
+          messages: [
+            {
+              role: 'user',
+              content: [{ text: userPrompt }],
+            },
+          ],
+          inferenceConfig: {
+            maxTokens: 500,
+            temperature: 0.7,
+          },
+        })
+      )
+
+      let responseText = ''
+      if (!bedrockResponse.stream) {
+        throw new Error('No stream in Bedrock response')
+      }
+
+      for await (const event of bedrockResponse.stream) {
+        if (event.contentBlockDelta?.delta?.text) {
+          responseText += event.contentBlockDelta.delta.text
+        }
+      }
+
+      const response =
+        responseText.trim() ||
         `I found ${markets.length} market(s) matching your query.`
 
       return {
         response,
         markets,
+        provider: 'bedrock',
       }
     } catch (aiError) {
-      console.error('Hugging Face API error:', aiError)
+      console.error('Bedrock AI error:', aiError)
       // Fallback to non-AI response
       let response = `I found ${markets.length} market(s) matching your query.`
       if (markets.length === 0) {
@@ -253,6 +263,7 @@ Please provide a helpful response to the user's query. Include the market count 
       return {
         response,
         markets,
+        provider: 'fallback',
       }
     }
   } catch (error) {
@@ -262,6 +273,7 @@ Please provide a helpful response to the user's query. Include the market count 
     return {
       response: 'I encountered an error processing your request. Please try again.',
       markets: [],
+      provider: 'fallback',
     }
   }
 }

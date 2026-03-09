@@ -4,6 +4,7 @@ export interface MarketInfo {
   slug: string
   name: string
   clobTokenIds: [string, string]
+  endDate: string | null
 }
 
 export async function fetchMarketInfo(slug: string): Promise<MarketInfo> {
@@ -15,6 +16,7 @@ export async function fetchMarketInfo(slug: string): Promise<MarketInfo> {
   const event = (await res.json()) as {
     slug?: string
     title?: string
+    endDate?: string
     markets?: Array<{ clobTokenIds?: string }>
   }
   const markets = event.markets ?? []
@@ -30,6 +32,7 @@ export async function fetchMarketInfo(slug: string): Promise<MarketInfo> {
   return {
     slug: event.slug ?? slug,
     name: event.title ?? slug,
+    endDate: event.endDate ?? null,
     clobTokenIds: [ids[0], ids[1]],
   }
 }

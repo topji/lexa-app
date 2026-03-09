@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { config } from './config.js';
 import { fetchMarketInfo } from './fetch-market.js';
+import { resolveSoonestBtc5mSlug } from './resolve-soonest.js';
 import { insertOdds, closePool } from './db/client.js';
 import { getWindowTs, pctChange } from './utils.js';
 const HISTORY = 5;
@@ -156,8 +157,21 @@ function tick() {
         .catch((err) => console.error('[DB] Insert error', err));
 }
 async function main() {
+    let slug = config.marketSlug;
+    const wantCurrentBtc5m = /btc.*5m|5m.*btc/i.test(slug);
+    if (wantCurrentBtc5m) {
+        console.log('Resolving current BTC 5m market...');
+        const soonest = await resolveSoonestBtc5mSlug();
+        if (soonest) {
+            slug = soonest;
+            console.log('Using soonest market slug:', slug);
+        }
+        else {
+            console.log('Could not resolve soonest, using config slug:', slug);
+        }
+    }
     console.log('Fetching market info...');
-    marketInfo = await fetchMarketInfo(config.marketSlug);
+    marketInfo = await fetchMarketInfo(slug);
     console.log('Market:', marketInfo.name, marketInfo.clobTokenIds);
     connectClob(marketInfo.clobTokenIds);
     connectRtds();

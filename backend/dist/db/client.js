@@ -1,14 +1,23 @@
 import pg from 'pg';
+import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 import { config } from '../config.js';
-const { Pool } = pg;
+const { Pool: PgPool } = pg;
+neonConfig.webSocketConstructor = ws;
 let pool = null;
 export function getPool() {
     if (!pool) {
-        pool = new Pool({
-            connectionString: config.databaseUrl,
-            max: 2,
-            idleTimeoutMillis: 10000,
-        });
+        const isNeon = config.databaseUrl.includes('neon.tech');
+        if (isNeon) {
+            pool = new NeonPool({ connectionString: config.databaseUrl, max: 2 });
+        }
+        else {
+            pool = new PgPool({
+                connectionString: config.databaseUrl,
+                max: 2,
+                idleTimeoutMillis: 10000,
+            });
+        }
     }
     return pool;
 }
