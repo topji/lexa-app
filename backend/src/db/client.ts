@@ -8,23 +8,86 @@ const { Pool: PgPool } = pg
 // Required in Node.js so Neon's driver can open WebSockets
 ;(neonConfig as { webSocketConstructor?: unknown }).webSocketConstructor = ws
 
+// RDS often presents a cert chain Node doesn't trust; force skip TLS verification for this process (worker + API).
+if (/rds\.amazonaws\.com|amazonaws\.com.*rds/i.test(config.databaseUrl)) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+}
+
 let pool: pg.Pool | InstanceType<typeof NeonPool> | null = null
 
-export function getPool(): pg.Pool {
+function clearPool(): void {
+  pool = null
+}
+
+/** Remove sslmode/gssencmode from URL so Pool's ssl option (rejectUnauthorized: false) is used for RDS. */
+function connectionStringWithoutSslParams(url: string): string {
+  let out = url.replace(/[?&](sslmode|gssencmode)=[^&]*/gi, (m) => (m.startsWith('?') ? '?' : ''))
+  out = out.replace(/\?&+/, '?').replace(/\?$/, '')
+  return out
+}
+
+function getPoolRaw(): pg.Pool {
   if (!pool) {
     const isNeon = config.databaseUrl.includes('neon.tech')
     if (isNeon) {
       pool = new NeonPool({ connectionString: config.databaseUrl, max: 2 }) as pg.Pool
     } else {
-      pool = new PgPool({
-        connectionString: config.databaseUrl,
+      // RDS: no sslmode in URL so our ssl option controls TLS and skips cert verification (avoids SELF_SIGNED_CERT_IN_CHAIN)
+      const connectionString = connectionStringWithoutSslParams(config.databaseUrl)
+      const idleMs = Math.min(60_000, parseInt(process.env.DB_IDLE_TIMEOUT_MS ?? '60000', 10) || 60_000)
+      const connectMs = Math.min(60_000, parseInt(process.env.DB_CONNECTION_TIMEOUT_MS ?? '30000', 10) || 30_000)
+      const p = new PgPool({
+        connectionString,
         max: 2,
-        idleTimeoutMillis: 10000,
+        idleTimeoutMillis: idleMs,
+        connectionTimeoutMillis: connectMs,
         ssl: { rejectUnauthorized: false },
+        keepAlive: true,
       })
+      p.on('error', (err) => {
+        console.error('[db] pool error, will reconnect on next request:', err?.message ?? err)
+        clearPool()
+      })
+      pool = p
     }
   }
   return pool as pg.Pool
+}
+
+export function getPool(): pg.Pool {
+  const raw = getPoolRaw()
+  return new Proxy(raw, {
+    get(target, prop) {
+      if (prop === 'query') {
+        return function (...args: Parameters<pg.Pool['query']>) {
+          return queryWithRetry((p) => (p.query as (...a: unknown[]) => Promise<unknown>).apply(p, args))
+        }
+      }
+      return (target as unknown as Record<string | symbol, unknown>)[prop]
+    },
+  }) as pg.Pool
+}
+
+function isConnectionError(err: unknown): boolean {
+  const e = err as NodeJS.ErrnoException & { message?: string }
+  const code = e?.code
+  if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'EPIPE' || code === 'ETIMEDOUT' || code === 'SELF_SIGNED_CERT_IN_CHAIN') return true
+  const msg = (e?.message ?? '').toLowerCase()
+  if (msg.includes('connection terminated') || msg.includes('connection timeout') || msg.includes('connection closed') || msg.includes('terminating connection') || msg.includes('self-signed certificate') || msg.includes('timeout exceeded when trying to connect')) return true
+  return false
+}
+
+async function queryWithRetry<T>(run: (p: pg.Pool) => Promise<T>): Promise<T> {
+  try {
+    return await run(getPoolRaw())
+  } catch (err: unknown) {
+    if (isConnectionError(err)) {
+      console.warn('[db] connection error, clearing pool and retrying:', (err as NodeJS.ErrnoException)?.code, (err as Error)?.message)
+      clearPool()
+      return await run(getPoolRaw())
+    }
+    throw err
+  }
 }
 
 export interface OddsRow {

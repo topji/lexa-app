@@ -11,6 +11,9 @@ const navItems = [
   { href: '/', label: 'Chat' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/crypto', label: 'Crypto' },
+  { href: '/strategies', label: 'Strategies' },
+  { href: '/quant-strategy', label: 'Quant Strategy' },
+  { href: '/copy-trading', label: 'Copy Trading' },
 ]
 
 export default function SideNav() {

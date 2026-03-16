@@ -20,6 +20,7 @@ export async function fetchMarketInfo(slug) {
     return {
         slug: event.slug ?? slug,
         name: event.title ?? slug,
+        endDate: event.endDate ?? null,
         clobTokenIds: [ids[0], ids[1]],
     };
 }

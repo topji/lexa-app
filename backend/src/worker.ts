@@ -4,6 +4,8 @@ import { fetchMarketInfo } from './fetch-market.js'
 import { resolveSoonestBtc5mSlug } from './resolve-soonest.js'
 import { insertOdds, closePool } from './db/client.js'
 import { getWindowTs, pctChange } from './utils.js'
+import { fetch15m, fetchHourly } from './synthdata/client.js'
+import { toInsightRow, insertSynthdataInsight } from './db/synthdataInsights.js'
 
 const HISTORY = 5
 
@@ -22,6 +24,7 @@ let clobPingId: ReturnType<typeof setInterval> | null = null
 let clobReconnectTimeout: ReturnType<typeof setTimeout> | null = null
 const buffer: Sample[] = []
 let intervalId: ReturnType<typeof setInterval> | null = null
+let synthdataIntervalId: ReturnType<typeof setInterval> | null = null
 let clobDebugLogged = 0
 let rtdsWs: WebSocket | null = null
 let switchingMarket = false
@@ -299,6 +302,31 @@ function tick() {
     .catch((err) => console.error('[DB] Insert error', err))
 }
 
+const SYNTHDATA_ASSETS = ['BTC', 'ETH', 'SOL'] as const
+const SYNTHDATA_DELAY_MS = 1500
+
+async function synthdataTick() {
+  const now = new Date()
+  const pairs: { asset: string; horizon: '15m' | '1h'; market: string }[] = []
+  for (const asset of SYNTHDATA_ASSETS) {
+    const prefix = asset.toLowerCase()
+    pairs.push({ asset, horizon: '15m', market: `${prefix}-15m` })
+    pairs.push({ asset, horizon: '1h', market: `${prefix}-1h` })
+  }
+  const results: { market: string; data: Awaited<ReturnType<typeof fetch15m>> }[] = []
+  for (const { asset, horizon, market } of pairs) {
+    const data = horizon === '15m' ? await fetch15m(asset) : await fetchHourly(asset)
+    results.push({ market, data })
+    await new Promise((r) => setTimeout(r, SYNTHDATA_DELAY_MS))
+  }
+  for (const { market, data } of results) {
+    if (data) {
+      const row = toInsightRow(market, now, data, data as unknown as Record<string, unknown>)
+      insertSynthdataInsight(row).catch((err) => console.error('[SynthData] insert', market, (err as Error)?.message))
+    }
+  }
+}
+
 async function main() {
   let slug = config.marketSlug
   const wantCurrentBtc5m = /btc.*5m|5m.*btc/i.test(slug)
@@ -326,10 +354,19 @@ async function main() {
 
   intervalId = setInterval(tick, config.sampleIntervalMs)
   console.log('Ingestion started (1 sample/sec). Each tick logs: sample_ts, market, expiry_s, price, up/down odds, CLOB/RTDS status.')
+
+  if (config.synthdataEnabled && config.synthdataApiKey) {
+    const intervalMs = config.synthdataPollIntervalMs
+    synthdataIntervalId = setInterval(synthdataTick, intervalMs)
+    console.log(`SynthData polling started (BTC/ETH/SOL 15m+1h every ${intervalMs / 1000}s, staggered). Storing in synthdata_insights.`)
+  } else {
+    console.log('SynthData skipped: set SYNTHDATA_ENABLED=1 and SYNTHDATA_API_KEY to enable.')
+  }
 }
 
 process.on('SIGINT', async () => {
   if (intervalId) clearInterval(intervalId)
+  if (synthdataIntervalId) clearInterval(synthdataIntervalId)
   if (clobReconnectTimeout) {
     clearTimeout(clobReconnectTimeout)
     clobReconnectTimeout = null
