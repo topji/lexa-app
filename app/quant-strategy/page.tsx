@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useWallet } from '@/contexts/WalletContext'
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3100'
 
@@ -149,6 +151,7 @@ function formatEdge(pp: number | null): string {
 }
 
 export default function QuantStrategyPage() {
+  const { address: walletAddress } = useWallet()
   const [insights, setInsights] = useState<MarketInsight[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -299,8 +302,21 @@ export default function QuantStrategyPage() {
       <div className="p-6 lg:p-10">
         <h1 className="font-display text-2xl font-bold text-white mb-2">Quant Strategy</h1>
         <p className="text-gray-400 mb-4">Live market insights for Up/Down (15m & 1h) — BTC, ETH, SOL.</p>
-        <div className="rounded-xl border border-lexa-border bg-lexa-glass p-8 text-center text-gray-400">
-          Connect your wallet to view insights.
+        <div className="rounded-xl border border-lexa-border bg-lexa-glass p-8 text-center text-gray-400 space-y-3">
+          {walletAddress ? (
+            <>
+              <p>Your wallet is connected, but you are not signed in to Lexa yet.</p>
+              <p className="text-sm text-gray-500">
+                Open{' '}
+                <Link href="/strategies" className="text-lexa-accent underline hover:text-white">
+                  Strategies
+                </Link>{' '}
+                and use <span className="text-gray-300">Connect MetaMask</span> once to sign in. Insights require the same session.
+              </p>
+            </>
+          ) : (
+            <p>Connect your wallet from the sidebar, then sign in on the Strategies page to view insights.</p>
+          )}
         </div>
       </div>
     )

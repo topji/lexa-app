@@ -2,6 +2,7 @@
 
 import { Message } from '@/types/chat'
 import MarketCard from './MarketCard'
+import InefficiencyCard from './InefficiencyCard'
 
 interface MessageListProps {
   messages: Message[]
@@ -24,7 +25,22 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
             }`}
           >
             <p className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">{message.content}</p>
-            {message.markets && message.markets.length > 0 && (
+
+            {/* Inefficiency groups (shown before regular markets) */}
+            {message.inefficiencies && message.inefficiencies.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <p className="font-display text-xs font-semibold uppercase tracking-wider text-yellow-400 mb-2">
+                  Inefficient Markets Detected
+                </p>
+                {message.inefficiencies.map((group, i) => (
+                  <InefficiencyCard key={i} group={group} />
+                ))}
+              </div>
+            )}
+
+            {/* Regular markets (only if no inefficiencies shown, to avoid duplication) */}
+            {(!message.inefficiencies || message.inefficiencies.length === 0) &&
+              message.markets && message.markets.length > 0 && (
               <div className="mt-4 space-y-3">
                 <p className="font-display text-xs font-semibold uppercase tracking-wider text-lexa-accent mb-2">Markets</p>
                 {message.markets.map((market) => (

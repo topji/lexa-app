@@ -483,6 +483,7 @@ const MARKET_LABELS: Record<string, string> = {
   'btc-15m': 'BTC 15min', 'btc-1h': 'BTC 1hr',
   'eth-15m': 'ETH 15min', 'eth-1h': 'ETH 1hr',
   'sol-15m': 'SOL 15min', 'sol-1h': 'SOL 1hr',
+  'btc-15m-quant': 'BTC 15m QUANT', 'btc-1h-quant': 'BTC 1h QUANT',
 }
 
 const ASSET_ICON: Record<string, string> = {

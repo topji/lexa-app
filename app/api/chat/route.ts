@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       response: result.response,
       markets: result.markets,
       provider: result.provider,
+      ...(result.inefficiencies ? { inefficiencies: result.inefficiencies } : {}),
     })
   } catch (error) {
     console.error('Chat API error:', error)

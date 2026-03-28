@@ -17,7 +17,11 @@ interface WalletContextValue {
 
 const WalletContext = createContext<WalletContextValue | null>(null)
 
-type EthereumProvider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> }
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+  on?: (event: string, handler: (...args: unknown[]) => void) => void
+  removeListener?: (event: string, handler: (...args: unknown[]) => void) => void
+}
 
 function getEthereum(): EthereumProvider | null {
   if (typeof window === 'undefined') return null
@@ -66,6 +70,43 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setChainId(null)
     }
   }, [])
+
+  /** Re-hydrate connected account after refresh (EIP-1193 silent reconnect). */
+  useEffect(() => {
+    const eth = getEthereum()
+    if (!eth) return
+
+    let cancelled = false
+
+    const hydrateAccounts = async () => {
+      try {
+        const accounts = (await eth.request({ method: 'eth_accounts' })) as string[]
+        if (cancelled) return
+        const acc = accounts?.[0]
+        if (acc) {
+          setAddress(acc)
+          await updateChainId()
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    void hydrateAccounts()
+
+    const onAccountsChanged = (accs: unknown) => {
+      const list = Array.isArray(accs) ? (accs as string[]) : []
+      const next = list[0] ?? null
+      setAddress(next)
+      if (!next) setChainId(null)
+    }
+    eth.on?.('accountsChanged', onAccountsChanged)
+
+    return () => {
+      cancelled = true
+      eth.removeListener?.('accountsChanged', onAccountsChanged)
+    }
+  }, [hasProvider, updateChainId])
 
   const connect = useCallback(async () => {
     setConnectionError(null)

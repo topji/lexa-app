@@ -135,6 +135,29 @@ async function main() {
         const insights = await getLatestSynthdataInsights();
         return { insights };
     });
+    // ── Quant Backend signal (proxied from Python FastAPI) ──────────────
+    app.get('/quant/signal/btc', async (req, reply) => {
+        const auth = requireAuth(req, reply);
+        if (!auth)
+            return;
+        if (!config.quantBackendEnabled) {
+            return reply.status(503).send({ error: 'Quant backend not enabled' });
+        }
+        try {
+            const qs = req.query;
+            const marketPrice = qs.market_price ? `?market_price=${encodeURIComponent(qs.market_price)}` : '';
+            const resp = await fetch(`${config.quantBackendUrl}/signal/btc${marketPrice}`, {
+                headers: { Accept: 'application/json' },
+            });
+            if (!resp.ok) {
+                return reply.status(502).send({ error: 'Quant backend error', status: resp.status });
+            }
+            return await resp.json();
+        }
+        catch (err) {
+            return reply.status(502).send({ error: 'Quant backend unreachable', message: err?.message });
+        }
+    });
     // ── Edge trading (BTC 15m only): enter Up when edge >= 8 pp, Down when edge <= -8 pp. Cooldown per market (slug).
     app.get('/edge-trading/status', async (req, reply) => {
         const auth = requireAuth(req, reply);
@@ -1230,6 +1253,30 @@ async function main() {
     startEdgeRunner();
     startCopyRunner();
 }
+// ── Helper: on-chain USDC balance for drawdown tracking ──────────────────────
+async function getOnChainUsdcBalance(walletId) {
+    const wallet = await getWalletById(walletId);
+    if (!wallet)
+        return { balance: 0 };
+    const address = (wallet.builder_proxy_address ?? wallet.funder_address)?.trim();
+    if (!address || !utils.isAddress(address))
+        return { balance: 0 };
+    const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+    const usdcAbi = ['function balanceOf(address) view returns (uint256)'];
+    for (const rpcUrl of config.polygonRpcUrls) {
+        try {
+            const provider = new providers.JsonRpcProvider(rpcUrl);
+            const usdc = new Contract(USDC_E, usdcAbi, provider);
+            const balWei = await usdc.balanceOf(address);
+            const balance = Number(typeof balWei === 'bigint' ? utils.formatUnits(balWei, 6) : utils.formatUnits(String(balWei), 6));
+            return { balance: Number.isFinite(balance) ? balance : 0 };
+        }
+        catch {
+            continue;
+        }
+    }
+    return { balance: 0 };
+}
 const EDGE_ENTRY_THRESHOLD_UP = 8; // percentage points: enter Up when edge >= 8
 const EDGE_ENTRY_THRESHOLD_DOWN = -8; // enter Down when edge <= -8
 /** Do not buy when odd (price) is above this — poor risk/reward (pay 75¢+ to win 25¢). */
@@ -1239,6 +1286,10 @@ const EDGE_MIN_ENTRY_ODD = 0.3;
 const EDGE_RUNNER_INTERVAL_MS = 30_000;
 /** Only use an insight if it was stored within this many ms (worker polls every 5s). */
 const EDGE_INSIGHT_MAX_AGE_MS = 2 * 60 * 1000;
+/** When both SynthData + Quant agree on direction, multiply order size by this factor. */
+const DUAL_SIGNAL_SIZE_MULTIPLIER = 2.0;
+/** Max daily drawdown percentage before halting trading. */
+const MAX_DAILY_DRAWDOWN_PCT = 20;
 const EDGE_MARKETS = [
     { market: 'btc-15m', asset: 'bitcoin', horizon: '15m' },
     { market: 'btc-1h', asset: 'bitcoin', horizon: '1h' },
@@ -1246,7 +1297,65 @@ const EDGE_MARKETS = [
     { market: 'eth-1h', asset: 'ethereum', horizon: '1h' },
     { market: 'sol-15m', asset: 'solana', horizon: '15m' },
     { market: 'sol-1h', asset: 'solana', horizon: '1h' },
+    // Quant-backend signals (GARCH + Monte Carlo + Bayesian + Momentum)
+    { market: 'btc-15m-quant', asset: 'bitcoin', horizon: '15m' },
+    { market: 'btc-1h-quant', asset: 'bitcoin', horizon: '1h' },
 ];
+// ── Daily Drawdown Tracker ──────────────────────────────────────────────────
+// Tracks starting balance per user per UTC day and stops trading if drawdown exceeds limit.
+const dailyBalanceTracker = new Map();
+async function checkDailyDrawdown(userId, walletId) {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const key = `${userId}-${today}`;
+    let currentBalance;
+    try {
+        const balResp = await getOnChainUsdcBalance(walletId);
+        currentBalance = balResp.balance;
+    }
+    catch {
+        return { allowed: true, drawdownPct: 0 }; // allow if can't check
+    }
+    const entry = dailyBalanceTracker.get(key);
+    if (!entry || entry.date !== today) {
+        // First check of the day — record starting balance
+        dailyBalanceTracker.set(key, { startBalance: currentBalance, date: today });
+        return { allowed: true, drawdownPct: 0 };
+    }
+    if (entry.startBalance <= 0)
+        return { allowed: true, drawdownPct: 0 };
+    const drawdownPct = ((entry.startBalance - currentBalance) / entry.startBalance) * 100;
+    return {
+        allowed: drawdownPct < MAX_DAILY_DRAWDOWN_PCT,
+        drawdownPct,
+    };
+}
+// ── Dual-Signal Confirmation ──────────────────────────────────────────────────
+// Checks if both SynthData and Quant agree on direction for the same horizon.
+function checkDualSignalConfirmation(byMarket, market, side) {
+    // Derive the counterpart market name
+    let counterpart;
+    if (market.endsWith('-quant')) {
+        counterpart = market.replace('-quant', ''); // quant → synthdata
+    }
+    else {
+        counterpart = `${market}-quant`; // synthdata → quant
+    }
+    const other = byMarket.get(counterpart);
+    if (!other || other.synth_probability_up == null || other.polymarket_probability_up == null) {
+        return { confirmed: false, sizeMultiplier: 1.0 };
+    }
+    const otherEdgePp = (other.synth_probability_up - other.polymarket_probability_up) * 100;
+    const otherOutcome = (other.current_outcome ?? '').trim().toLowerCase();
+    let otherSide = null;
+    if (otherEdgePp >= EDGE_ENTRY_THRESHOLD_UP && otherOutcome === 'up')
+        otherSide = 'up';
+    else if (otherEdgePp <= EDGE_ENTRY_THRESHOLD_DOWN && otherOutcome === 'down')
+        otherSide = 'down';
+    if (otherSide === side) {
+        return { confirmed: true, sizeMultiplier: DUAL_SIGNAL_SIZE_MULTIPLIER };
+    }
+    return { confirmed: false, sizeMultiplier: 1.0 };
+}
 async function runEdgeTradingLoop() {
     const rows = await getAllEnabledEdgeTrading();
     if (rows.length === 0)
@@ -1295,16 +1404,19 @@ async function runEdgeTradingLoop() {
             console.error('[EdgeRunner] fetchMarketInfo failed', { market, slug: resolvedSlug, err });
             continue;
         }
+        let secondsToExpiry = 0;
         if (info.endDate) {
             const endMs = new Date(info.endDate).getTime();
             if (Number.isFinite(endMs) && endMs <= Date.now())
                 continue;
-            const secondsToExpiry = Math.floor((endMs - Date.now()) / 1000);
+            secondsToExpiry = Math.floor((endMs - Date.now()) / 1000);
             if (horizon === '15m' && secondsToExpiry < 2 * 60)
                 continue; // do not enter 15m in last 2 min
             if (horizon === '1h' && secondsToExpiry < 5 * 60)
                 continue; // do not enter 1h in last 5 min
         }
+        // Dual-signal confirmation: check if both SynthData and Quant agree
+        const dualSignal = checkDualSignalConfirmation(byMarket, market, side);
         const slug = resolvedSlug;
         const tokenID = side === 'up' ? info.clobTokenIds[0] : info.clobTokenIds[1];
         for (const row of rows) {
@@ -1314,9 +1426,19 @@ async function runEdgeTradingLoop() {
             const alreadyEntered = await hasEnteredSlug(row.user_id, slug);
             if (alreadyEntered)
                 continue;
-            const orderSizeUsd = Number(row.order_size_usd);
+            // Daily drawdown check
+            const { allowed: drawdownOk, drawdownPct } = await checkDailyDrawdown(row.user_id, row.wallet_id);
+            if (!drawdownOk) {
+                console.warn('[EdgeRunner] DRAWDOWN STOP userId=%d drawdown=%.1f%% > %d%% — skipping', row.user_id, drawdownPct, MAX_DAILY_DRAWDOWN_PCT);
+                continue;
+            }
+            let orderSizeUsd = Number(row.order_size_usd);
             if (!Number.isFinite(orderSizeUsd) || orderSizeUsd < 1)
                 continue;
+            // Apply dual-signal multiplier
+            if (dualSignal.confirmed) {
+                orderSizeUsd = Math.round(orderSizeUsd * dualSignal.sizeMultiplier * 100) / 100;
+            }
             try {
                 const { client } = await getClobClientForWallet(row.wallet_id);
                 const tickSize = await client.getTickSize(tokenID);
@@ -1335,7 +1457,20 @@ async function runEdgeTradingLoop() {
                     orderSizeUsd,
                 });
                 await setEdgeTradingLastEntered({ userId: row.user_id, slug });
-                console.log('[EdgeRunner] entered', { userId: row.user_id, market, slug, side, edgePp: edgePp.toFixed(2) });
+                // Enhanced logging with all context
+                console.log('[EdgeRunner] entered', {
+                    userId: row.user_id, market, slug, side,
+                    edgePp: edgePp.toFixed(2),
+                    signalProbUp: synthUp.toFixed(4),
+                    polyProbUp: polyUp.toFixed(4),
+                    entryOdd: entryOdd.toFixed(3),
+                    orderSizeUsd,
+                    dualSignalConfirmed: dualSignal.confirmed,
+                    sizeMultiplier: dualSignal.sizeMultiplier,
+                    secondsToExpiry,
+                    drawdownPct: drawdownPct.toFixed(1),
+                    isQuantSignal: market.endsWith('-quant'),
+                });
             }
             catch (err) {
                 console.error('[EdgeRunner] error', { userId: row.user_id, market, slug, err });

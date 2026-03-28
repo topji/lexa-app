@@ -37,4 +37,8 @@ export const config = {
     synthdataEnabled: process.env.SYNTHDATA_ENABLED === '1' || process.env.SYNTHDATA_ENABLED === 'true',
     /** Poll interval (ms). Default 30s to avoid SynthData rate limits (429). */
     synthdataPollIntervalMs: parseInt(process.env.SYNTHDATA_POLL_INTERVAL_MS ?? '30000', 10) || 30000,
+    /** Quant Backend (Python FastAPI). Set QUANT_BACKEND_ENABLED=1 to poll signals from quant-backend. */
+    quantBackendUrl: process.env.QUANT_BACKEND_URL ?? 'http://localhost:8100',
+    quantBackendEnabled: process.env.QUANT_BACKEND_ENABLED === '1' || process.env.QUANT_BACKEND_ENABLED === 'true',
+    quantBackendPollIntervalMs: parseInt(process.env.QUANT_BACKEND_POLL_INTERVAL_MS ?? '30000', 10) || 30000,
 };

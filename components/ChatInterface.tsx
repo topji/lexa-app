@@ -10,7 +10,7 @@ export default function ChatInterface() {
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm Lexa, your AI assistant for Polymarket. Ask me about markets related to crypto, politics, or any other category. For example, try asking: 'List me all the Polymarket markets related to crypto' or 'What are the best markets in politics right now with Yes rate more than 90%?'",
+      content: "Hi! I'm Lexa, your AI assistant for Polymarket. Ask me about markets related to crypto, politics, or any keyword (e.g. “markets about Iran”, “Israel markets”, “BTC markets”).",
     },
   ])
   const [isLoading, setIsLoading] = useState(false)
@@ -55,6 +55,7 @@ export default function ChatInterface() {
         role: 'assistant',
         content: data.response,
         markets: data.markets,
+        inefficiencies: data.inefficiencies,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -71,7 +72,7 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col min-h-[320px] h-[50vh] sm:h-[520px] md:h-[580px] lg:h-[620px] max-h-[calc(100vh-280px)] rounded-xl sm:rounded-2xl overflow-hidden border border-lexa-border bg-lexa-glass backdrop-blur-sm card-glow flex-1 min-h-0">
+    <div className="flex flex-col min-h-[320px] h-[50vh] sm:h-[520px] md:h-[580px] lg:h-[620px] max-h-[calc(100vh-280px)] rounded-xl sm:rounded-2xl overflow-hidden border border-lexa-border bg-lexa-glass backdrop-blur-sm card-glow flex-1">
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-gradient-to-b from-lexa-glass to-void min-h-0">
         <MessageList messages={messages} isLoading={isLoading} />
         <div ref={messagesEndRef} />

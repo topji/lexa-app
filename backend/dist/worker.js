@@ -295,6 +295,66 @@ async function synthdataTick() {
         }
     }
 }
+// ── Quant Backend poller ─────────────────────────────────────────────────────
+// Polls our Python quant-backend (GARCH + Monte Carlo + Bayesian + Momentum)
+// and stores signals in synthdata_insights so the edge runner can consume them.
+let quantIntervalId = null;
+async function quantBackendTick() {
+    try {
+        // Fetch signal from quant-backend for BTC
+        const url = `${config.quantBackendUrl}/signal/btc/summary`;
+        const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!resp.ok) {
+            console.error('[QuantBackend] fetch failed:', resp.status, resp.statusText);
+            return;
+        }
+        const signal = (await resp.json());
+        if (!Number.isFinite(signal.p_up))
+            return;
+        // If quant-backend filters block the trade, still store the signal
+        // but mark the outcome as "blocked" so the edge runner skips it
+        const now = new Date();
+        for (const horizon of ['15m', '1h']) {
+            const market = `btc-${horizon}`;
+            const { resolveSoonestSlug } = await import('./resolve-soonest.js');
+            const slug = await resolveSoonestSlug('bitcoin', horizon);
+            if (!slug)
+                continue;
+            const polyUp = signal.market_price || 0.5;
+            // If trade is blocked by filters, don't pass a directional outcome
+            // so the edge runner's outcome-matching check will skip it
+            const outcome = signal.trade_allowed
+                ? (signal.p_up >= 0.5 ? 'up' : 'down')
+                : 'blocked';
+            const row = {
+                market: `${market}-quant`,
+                sample_ts: now,
+                slug,
+                start_price: null,
+                current_price: signal.current_price_usd,
+                current_outcome: outcome,
+                synth_probability_up: signal.p_up,
+                polymarket_probability_up: polyUp,
+                event_start_time: null,
+                event_end_time: null,
+                best_bid_price: null,
+                best_ask_price: null,
+                best_bid_size: null,
+                best_ask_size: null,
+                polymarket_last_trade_time: null,
+                polymarket_last_trade_price: null,
+                polymarket_last_trade_outcome: null,
+                raw: signal,
+            };
+            await insertSynthdataInsight(row).catch((err) => console.error('[QuantBackend] insert', market, err?.message));
+        }
+        const blockMsg = signal.trade_allowed ? '' : ` [BLOCKED: ${signal.block_reason ?? 'filters'}]`;
+        console.log('[QuantBackend] BTC P(up)=%s raw=%s side=%s edge=%s%% regime=%s agree=%s vol=%s%s', signal.p_up.toFixed(4), signal.p_up_raw?.toFixed(4) ?? '?', signal.side, signal.edge_pct.toFixed(2), signal.regime, signal.models_agree, signal.recent_vol?.toFixed(6) ?? '?', blockMsg);
+    }
+    catch (err) {
+        console.error('[QuantBackend] tick error', err?.message);
+    }
+}
 async function main() {
     let slug = config.marketSlug;
     const wantCurrentBtc5m = /btc.*5m|5m.*btc/i.test(slug);
@@ -330,12 +390,24 @@ async function main() {
     else {
         console.log('SynthData skipped: set SYNTHDATA_ENABLED=1 and SYNTHDATA_API_KEY to enable.');
     }
+    if (config.quantBackendEnabled) {
+        const intervalMs = config.quantBackendPollIntervalMs;
+        quantIntervalId = setInterval(quantBackendTick, intervalMs);
+        // Also run immediately
+        quantBackendTick().catch((err) => console.error('[QuantBackend] initial tick error', err?.message));
+        console.log(`[QuantBackend] polling started (every ${intervalMs / 1000}s). Signals stored as btc-*-quant in synthdata_insights.`);
+    }
+    else {
+        console.log('[QuantBackend] skipped: set QUANT_BACKEND_ENABLED=1 to enable.');
+    }
 }
 process.on('SIGINT', async () => {
     if (intervalId)
         clearInterval(intervalId);
     if (synthdataIntervalId)
         clearInterval(synthdataIntervalId);
+    if (quantIntervalId)
+        clearInterval(quantIntervalId);
     if (clobReconnectTimeout) {
         clearTimeout(clobReconnectTimeout);
         clobReconnectTimeout = null;

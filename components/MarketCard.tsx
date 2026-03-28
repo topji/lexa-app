@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { PolymarketMarket } from '@/types/polymarket'
 
 interface MarketCardProps {
@@ -8,10 +9,7 @@ interface MarketCardProps {
 
 export default function MarketCard({ market }: MarketCardProps) {
   const polymarketUrl = `https://polymarket.com/event/${market.slug}`
-  
-  const handleClick = () => {
-    window.open(polymarketUrl, '_blank', 'noopener,noreferrer')
-  }
+  const tradeHref = `/market/${encodeURIComponent(market.slug)}`
 
   const formatOutcome = (outcome: { name: string; price: number }, index: number) => {
     const price = outcome.price
@@ -33,10 +31,7 @@ export default function MarketCard({ market }: MarketCardProps) {
   }
 
   return (
-    <div
-      onClick={handleClick}
-      className="rounded-2xl border border-lexa-border bg-lexa-glass p-5 hover:border-lexa-accent/50 transition-all cursor-pointer group card-glow"
-    >
+    <div className="rounded-2xl border border-lexa-border bg-lexa-glass p-5 hover:border-lexa-accent/50 transition-all group card-glow">
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
           <h4 className="font-sans font-semibold text-base text-white group-hover:text-lexa-accent transition-colors pr-2 flex-1">
@@ -64,7 +59,7 @@ export default function MarketCard({ market }: MarketCardProps) {
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-4 border-t border-lexa-border">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-lexa-border">
         <div className="flex items-center space-x-4 text-xs text-gray-500 font-sans">
           {market.volume != null && (
             <span>
@@ -75,12 +70,26 @@ export default function MarketCard({ market }: MarketCardProps) {
             <span>{market.tags.slice(0, 2).join(', ')}</span>
           )}
         </div>
-        <span className="text-lexa-accent group-hover:text-lexa-accent/90 font-display font-semibold text-sm inline-flex items-center gap-1 uppercase tracking-wide">
-          View on Polymarket
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={tradeHref}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-lexa-accent/20 px-3 py-1.5 font-display font-semibold text-sm text-lexa-accent uppercase tracking-wide border border-lexa-accent/40 hover:bg-lexa-accent/30 transition-colors"
+          >
+            Trade
+          </Link>
+          <a
+            href={polymarketUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-gray-500 hover:text-lexa-accent font-display font-semibold text-xs inline-flex items-center gap-1 uppercase tracking-wide transition-colors"
+          >
+            Polymarket
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        </div>
       </div>
     </div>
   )

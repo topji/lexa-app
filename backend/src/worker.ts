@@ -6,6 +6,7 @@ import { insertOdds, closePool } from './db/client.js'
 import { getWindowTs, pctChange } from './utils.js'
 import { fetch15m, fetchHourly } from './synthdata/client.js'
 import { toInsightRow, insertSynthdataInsight } from './db/synthdataInsights.js'
+import { fetchLexaUpDownInsight } from './polymarket/lexaMarketInsights.js'
 
 const HISTORY = 5
 
@@ -24,7 +25,7 @@ let clobPingId: ReturnType<typeof setInterval> | null = null
 let clobReconnectTimeout: ReturnType<typeof setTimeout> | null = null
 const buffer: Sample[] = []
 let intervalId: ReturnType<typeof setInterval> | null = null
-let synthdataIntervalId: ReturnType<typeof setInterval> | null = null
+let marketInsightsIntervalId: ReturnType<typeof setInterval> | null = null
 let clobDebugLogged = 0
 let rtdsWs: WebSocket | null = null
 let switchingMarket = false
@@ -327,6 +328,178 @@ async function synthdataTick() {
   }
 }
 
+const LEXA_INSIGHT_ASSETS = ['btc', 'eth', 'sol'] as const
+
+/** Polymarket Gamma + Binance spot — fills synthdata_insights without SynthData API. */
+async function lexaMarketInsightsTick() {
+  for (const asset of LEXA_INSIGHT_ASSETS) {
+    for (const horizon of ['15m', '1h'] as const) {
+      try {
+        const row = await fetchLexaUpDownInsight(asset, horizon)
+        if (row) {
+          await insertSynthdataInsight(row)
+        }
+      } catch (err) {
+        console.error('[LexaInsights] tick', asset, horizon, (err as Error)?.message)
+      }
+      await new Promise((r) => setTimeout(r, SYNTHDATA_DELAY_MS))
+    }
+  }
+}
+
+// ── Quant Backend poller ─────────────────────────────────────────────────────
+// Polls our Python quant-backend (GARCH + Monte Carlo + Bayesian + Momentum)
+// and stores signals in synthdata_insights so the edge runner can consume them.
+let quantIntervalId: ReturnType<typeof setInterval> | null = null
+
+type QuantSummarySignal = {
+  symbol: string
+  engine: string
+  horizon: string
+  p_up: number
+  p_up_raw: number
+  p_down: number
+  side: string
+  kelly_fraction: number
+  regime_kelly_fraction: number
+  ev_gap: number
+  edge_pct: number
+  has_edge: boolean
+  action: string
+  confidence: string
+  trade_allowed: boolean
+  block_reason: string | null
+  current_price_usd: number
+  start_price: number | null
+  distance_pct: number
+  minutes_remaining: number | null
+  market_price: number
+  model_std?: number
+  models_agree?: boolean
+  recent_vol?: number
+  vol_sufficient?: boolean
+  regime?: string
+  regime_kelly_multiplier?: number
+  sigma_remaining?: number
+  sigma_1m?: number
+  time_ok?: boolean
+  spread_ok?: boolean
+}
+
+async function fetchQuantSignalForHorizon(
+  horizon: '15m' | '1h',
+  startPrice: number | null,
+  minutesRemaining: number | null,
+  marketPrice: number | null,
+  spread: number | null,
+): Promise<QuantSummarySignal | null> {
+  const params = new URLSearchParams()
+  params.set('horizon', horizon)
+  if (startPrice != null && Number.isFinite(startPrice)) params.set('start_price', String(startPrice))
+  if (minutesRemaining != null && Number.isFinite(minutesRemaining)) params.set('minutes_remaining', String(minutesRemaining))
+  if (marketPrice != null && Number.isFinite(marketPrice)) params.set('market_price', String(marketPrice))
+  if (spread != null && Number.isFinite(spread)) params.set('spread', String(spread))
+
+  const url = `${config.quantBackendUrl}/signal/btc/summary?${params.toString()}`
+  const resp = await fetch(url, { headers: { Accept: 'application/json' } })
+  if (!resp.ok) {
+    console.error(`[QuantBackend] ${horizon} fetch failed:`, resp.status, resp.statusText)
+    return null
+  }
+  const signal = (await resp.json()) as QuantSummarySignal
+  if (!Number.isFinite(signal.p_up)) return null
+  return signal
+}
+
+async function quantBackendTick() {
+  try {
+    const now = new Date()
+    const { resolveSoonestSlug } = await import('./resolve-soonest.js')
+    const { getLatestSynthdataInsights } = await import('./db/synthdataInsights.js')
+
+    // Get latest SynthData insights for start_price + event_end_time
+    const allInsights = await getLatestSynthdataInsights()
+    const insightByMarket = new Map(allInsights.map((i) => [i.market, i]))
+
+    for (const horizon of ['15m', '1h'] as const) {
+      const market = `btc-${horizon}`
+      const slug = await resolveSoonestSlug('bitcoin', horizon)
+      if (!slug) {
+        console.log(`[QuantBackend] ${horizon}: no active market found`)
+        continue
+      }
+
+      // Get start_price and minutes_remaining from SynthData insight
+      const synthInsight = insightByMarket.get(market)
+      const startPrice = synthInsight?.start_price ?? null
+      let minutesRemaining: number | null = null
+
+      if (synthInsight?.event_end_time) {
+        const endMs = new Date(synthInsight.event_end_time).getTime()
+        minutesRemaining = Math.max(0, (endMs - now.getTime()) / 60_000)
+      }
+
+      // Compute spread from best_bid/best_ask if available
+      let spread: number | null = null
+      if (synthInsight?.best_bid_price != null && synthInsight?.best_ask_price != null) {
+        spread = synthInsight.best_ask_price - synthInsight.best_bid_price
+      }
+
+      const polyUp = synthInsight?.polymarket_probability_up ?? 0.5
+
+      // Fetch signal from quant-backend with all context
+      const signal = await fetchQuantSignalForHorizon(
+        horizon,
+        startPrice,
+        minutesRemaining,
+        polyUp,
+        spread,
+      )
+      if (!signal) continue
+
+      const outcome = signal.trade_allowed
+        ? (signal.p_up >= 0.5 ? 'up' : 'down')
+        : 'blocked'
+
+      const row: import('./db/synthdataInsights.js').SynthdataInsightRow = {
+        market: `${market}-quant`,
+        sample_ts: now,
+        slug,
+        start_price: startPrice,
+        current_price: signal.current_price_usd,
+        current_outcome: outcome,
+        synth_probability_up: signal.p_up,
+        polymarket_probability_up: polyUp,
+        event_start_time: synthInsight?.event_start_time ? new Date(synthInsight.event_start_time) : null,
+        event_end_time: synthInsight?.event_end_time ? new Date(synthInsight.event_end_time) : null,
+        best_bid_price: synthInsight?.best_bid_price ?? null,
+        best_ask_price: synthInsight?.best_ask_price ?? null,
+        best_bid_size: synthInsight?.best_bid_size ?? null,
+        best_ask_size: synthInsight?.best_ask_size ?? null,
+        polymarket_last_trade_time: null,
+        polymarket_last_trade_price: null,
+        polymarket_last_trade_outcome: null,
+        raw: signal as unknown as Record<string, unknown>,
+      }
+      await insertSynthdataInsight(row).catch((err: unknown) =>
+        console.error('[QuantBackend] insert', market, (err as Error)?.message)
+      )
+
+      const blockMsg = signal.trade_allowed ? '' : ` [BLOCKED: ${signal.block_reason ?? 'filters'}]`
+      const startInfo = startPrice ? ` start=$${startPrice.toFixed(0)}` : ''
+      const timeInfo = minutesRemaining != null ? ` rem=${minutesRemaining.toFixed(1)}m` : ''
+      console.log('[QuantBackend] %s P(up)=%s raw=%s side=%s edge=%s%% engine=%s%s%s%s',
+        horizon.toUpperCase(),
+        signal.p_up.toFixed(4), signal.p_up_raw?.toFixed(4) ?? '?',
+        signal.side, signal.edge_pct.toFixed(2),
+        signal.engine, startInfo, timeInfo,
+        blockMsg)
+    }
+  } catch (err) {
+    console.error('[QuantBackend] tick error', (err as Error)?.message)
+  }
+}
+
 async function main() {
   let slug = config.marketSlug
   const wantCurrentBtc5m = /btc.*5m|5m.*btc/i.test(slug)
@@ -355,18 +528,38 @@ async function main() {
   intervalId = setInterval(tick, config.sampleIntervalMs)
   console.log('Ingestion started (1 sample/sec). Each tick logs: sample_ts, market, expiry_s, price, up/down odds, CLOB/RTDS status.')
 
-  if (config.synthdataEnabled && config.synthdataApiKey) {
+  if (config.lexaMarketInsightsEnabled) {
+    const intervalMs = config.lexaMarketInsightsPollIntervalMs
+    marketInsightsIntervalId = setInterval(lexaMarketInsightsTick, intervalMs)
+    void lexaMarketInsightsTick().catch((err: unknown) =>
+      console.error('[LexaInsights] initial tick', (err as Error)?.message)
+    )
+    console.log(
+      `[LexaInsights] Polymarket+Binance polling (BTC/ETH/SOL 15m+1h every ${intervalMs / 1000}s, staggered). Storing in synthdata_insights.`
+    )
+  } else if (config.synthdataEnabled && config.synthdataApiKey) {
     const intervalMs = config.synthdataPollIntervalMs
-    synthdataIntervalId = setInterval(synthdataTick, intervalMs)
+    marketInsightsIntervalId = setInterval(synthdataTick, intervalMs)
     console.log(`SynthData polling started (BTC/ETH/SOL 15m+1h every ${intervalMs / 1000}s, staggered). Storing in synthdata_insights.`)
   } else {
-    console.log('SynthData skipped: set SYNTHDATA_ENABLED=1 and SYNTHDATA_API_KEY to enable.')
+    console.log('Market insights skipped: Lexa insights disabled (LEXA_MARKET_INSIGHTS_ENABLED=0) and SynthData not configured.')
+  }
+
+  if (config.quantBackendEnabled) {
+    const intervalMs = config.quantBackendPollIntervalMs
+    quantIntervalId = setInterval(quantBackendTick, intervalMs)
+    // Also run immediately
+    quantBackendTick().catch((err: unknown) => console.error('[QuantBackend] initial tick error', (err as Error)?.message))
+    console.log(`[QuantBackend] polling started (every ${intervalMs / 1000}s). Signals stored as btc-*-quant in synthdata_insights.`)
+  } else {
+    console.log('[QuantBackend] skipped: set QUANT_BACKEND_ENABLED=1 to enable.')
   }
 }
 
 process.on('SIGINT', async () => {
   if (intervalId) clearInterval(intervalId)
-  if (synthdataIntervalId) clearInterval(synthdataIntervalId)
+  if (marketInsightsIntervalId) clearInterval(marketInsightsIntervalId)
+  if (quantIntervalId) clearInterval(quantIntervalId)
   if (clobReconnectTimeout) {
     clearTimeout(clobReconnectTimeout)
     clobReconnectTimeout = null

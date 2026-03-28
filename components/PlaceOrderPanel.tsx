@@ -13,6 +13,9 @@ interface PlaceOrderPanelProps {
   upPrice: number | null
   downPrice: number | null
   polymarketUrl: string
+  /** Optional labels for the two outcomes (default: Up / Down) */
+  upOutcomeLabel?: string
+  downOutcomeLabel?: string
 }
 
 export function PlaceOrderPanel({
@@ -21,7 +24,11 @@ export function PlaceOrderPanel({
   upPrice,
   downPrice,
   polymarketUrl,
+  upOutcomeLabel,
+  downOutcomeLabel,
 }: PlaceOrderPanelProps) {
+  const upLabel = upOutcomeLabel?.trim() || 'Up'
+  const downLabel = downOutcomeLabel?.trim() || 'Down'
   const { address, chainId, switchToPolygon } = useWallet()
   const { clobClient, initialize, initializing, step, error: tradingError } = useTrading()
   const [orderMode, setOrderMode] = useState<OrderMode>('market')
@@ -254,7 +261,7 @@ export function PlaceOrderPanel({
           disabled={loading !== null || (orderMode === 'market' ? !canPlaceMarket : !canPlaceLimit)}
           className="rounded-xl bg-neon-green/20 border-2 border-neon-green/50 hover:border-neon-green hover:bg-neon-green/30 p-3 text-center transition-colors disabled:opacity-50"
         >
-          <div className="text-neon-green font-display font-semibold text-sm uppercase tracking-wide">Buy Up</div>
+          <div className="text-neon-green font-display font-semibold text-sm uppercase tracking-wide">Buy {upLabel}</div>
           <div className="text-lg font-mono font-bold text-white tabular-nums">
             {upPrice != null ? `${Math.round(upPrice * 100)}¢` : '—'}
           </div>
@@ -266,7 +273,7 @@ export function PlaceOrderPanel({
           disabled={loading !== null || (orderMode === 'market' ? !canPlaceMarket : !canPlaceLimit)}
           className="rounded-xl bg-lexa-glass border-2 border-lexa-border hover:border-neon-red/50 hover:bg-neon-red/10 p-3 text-center transition-colors disabled:opacity-50"
         >
-          <div className="text-neon-red font-display font-semibold text-sm uppercase tracking-wide">Buy Down</div>
+          <div className="text-neon-red font-display font-semibold text-sm uppercase tracking-wide">Buy {downLabel}</div>
           <div className="text-lg font-mono font-bold text-white tabular-nums">
             {downPrice != null ? `${Math.round(downPrice * 100)}¢` : '—'}
           </div>

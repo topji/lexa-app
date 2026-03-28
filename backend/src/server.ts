@@ -17,6 +17,7 @@ import { createOrDeriveClobApiKey } from './polymarket/clob.js'
 import { startRunner } from './runner.js'
 import { listPositionsForStrategy, countOpenPositionsForUser, listAllPositionsForUser } from './db/positions.js'
 import { getLatestSynthdataInsights } from './db/synthdataInsights.js'
+import { mergeQuantQueryWithInsight, type PolymarketContextMeta } from './quant/mergeInsightParams.js'
 import {
   getEdgeTradingByUserId,
   upsertEdgeTradingStart,
@@ -179,6 +180,55 @@ async function main() {
     if (!auth) return
     const insights = await getLatestSynthdataInsights()
     return { insights }
+  })
+
+  // ── Quant Backend signal (proxied from Python FastAPI) ──────────────
+  app.get('/quant/signal/btc', async (req, reply) => {
+    const auth = requireAuth(req, reply)
+    if (!auth) return
+    if (!config.quantBackendEnabled) {
+      return reply.status(503).send({ error: 'Quant backend not enabled' })
+    }
+    try {
+      const qs = req.query as Record<string, string | undefined>
+      const useAuto = qs.auto_context === '1' || qs.auto_context === 'true'
+      let params: URLSearchParams
+
+      let polymarket_context: PolymarketContextMeta | null = null
+      let context_warning: string | null = null
+
+      if (useAuto) {
+        const horizon = (qs.horizon ?? '1h').toLowerCase() === '15m' ? '15m' : '1h'
+        const marketKey = horizon === '15m' ? 'btc-15m' : 'btc-1h'
+        const insights = await getLatestSynthdataInsights()
+        const insight = insights.find((i) => i.market === marketKey)
+        const merged = mergeQuantQueryWithInsight(qs, insight, marketKey, horizon)
+        params = merged.params
+        polymarket_context = merged.contextMeta
+        context_warning = merged.contextWarning
+      } else {
+        params = new URLSearchParams()
+        for (const key of ['horizon', 'start_price', 'minutes_remaining', 'market_price', 'spread'] as const) {
+          if (qs[key]) params.set(key, qs[key]!)
+        }
+        if (!params.has('horizon')) params.set('horizon', '1h')
+      }
+
+      const queryStr = params.toString()
+      const resp = await fetch(`${config.quantBackendUrl}/signal/btc${queryStr ? `?${queryStr}` : ''}`, {
+        headers: { Accept: 'application/json' },
+      })
+      if (!resp.ok) {
+        return reply.status(502).send({ error: 'Quant backend error', status: resp.status })
+      }
+      const data = (await resp.json()) as Record<string, unknown>
+      if (useAuto) {
+        return { ...data, polymarket_context, context_warning }
+      }
+      return data
+    } catch (err) {
+      return reply.status(502).send({ error: 'Quant backend unreachable', message: (err as Error)?.message })
+    }
   })
 
   // ── Edge trading (BTC 15m only): enter Up when edge >= 8 pp, Down when edge <= -8 pp. Cooldown per market (slug).
@@ -1319,6 +1369,29 @@ async function main() {
   startCopyRunner()
 }
 
+// ── Helper: on-chain USDC balance for drawdown tracking ──────────────────────
+async function getOnChainUsdcBalance(walletId: number): Promise<{ balance: number }> {
+  const wallet = await getWalletById(walletId)
+  if (!wallet) return { balance: 0 }
+  const address = (wallet.builder_proxy_address ?? wallet.funder_address)?.trim()
+  if (!address || !utils.isAddress(address)) return { balance: 0 }
+
+  const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+  const usdcAbi = ['function balanceOf(address) view returns (uint256)']
+  for (const rpcUrl of config.polygonRpcUrls) {
+    try {
+      const provider = new providers.JsonRpcProvider(rpcUrl)
+      const usdc = new Contract(USDC_E, usdcAbi, provider)
+      const balWei = await usdc.balanceOf(address)
+      const balance = Number(typeof balWei === 'bigint' ? utils.formatUnits(balWei, 6) : utils.formatUnits(String(balWei), 6))
+      return { balance: Number.isFinite(balance) ? balance : 0 }
+    } catch {
+      continue
+    }
+  }
+  return { balance: 0 }
+}
+
 const EDGE_ENTRY_THRESHOLD_UP = 8   // percentage points: enter Up when edge >= 8
 const EDGE_ENTRY_THRESHOLD_DOWN = -8 // enter Down when edge <= -8
 /** Do not buy when odd (price) is above this — poor risk/reward (pay 75¢+ to win 25¢). */
@@ -1328,6 +1401,10 @@ const EDGE_MIN_ENTRY_ODD = 0.3
 const EDGE_RUNNER_INTERVAL_MS = 30_000
 /** Only use an insight if it was stored within this many ms (worker polls every 5s). */
 const EDGE_INSIGHT_MAX_AGE_MS = 2 * 60 * 1000
+/** When both SynthData + Quant agree on direction, multiply order size by this factor. */
+const DUAL_SIGNAL_SIZE_MULTIPLIER = 2.0
+/** Max daily drawdown percentage before halting trading. */
+const MAX_DAILY_DRAWDOWN_PCT = 20
 
 const EDGE_MARKETS: { market: string; asset: 'bitcoin' | 'ethereum' | 'solana'; horizon: '15m' | '1h' }[] = [
   { market: 'btc-15m', asset: 'bitcoin', horizon: '15m' },
@@ -1336,7 +1413,72 @@ const EDGE_MARKETS: { market: string; asset: 'bitcoin' | 'ethereum' | 'solana'; 
   { market: 'eth-1h', asset: 'ethereum', horizon: '1h' },
   { market: 'sol-15m', asset: 'solana', horizon: '15m' },
   { market: 'sol-1h', asset: 'solana', horizon: '1h' },
+  // Quant-backend signals (GARCH + Monte Carlo + Bayesian + Momentum)
+  { market: 'btc-15m-quant', asset: 'bitcoin', horizon: '15m' },
+  { market: 'btc-1h-quant', asset: 'bitcoin', horizon: '1h' },
 ]
+
+// ── Daily Drawdown Tracker ──────────────────────────────────────────────────
+// Tracks starting balance per user per UTC day and stops trading if drawdown exceeds limit.
+const dailyBalanceTracker = new Map<string, { startBalance: number; date: string }>()
+
+async function checkDailyDrawdown(userId: number, walletId: number): Promise<{ allowed: boolean; drawdownPct: number }> {
+  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const key = `${userId}-${today}`
+  let currentBalance: number
+  try {
+    const balResp = await getOnChainUsdcBalance(walletId)
+    currentBalance = balResp.balance
+  } catch {
+    return { allowed: true, drawdownPct: 0 } // allow if can't check
+  }
+
+  const entry = dailyBalanceTracker.get(key)
+  if (!entry || entry.date !== today) {
+    // First check of the day — record starting balance
+    dailyBalanceTracker.set(key, { startBalance: currentBalance, date: today })
+    return { allowed: true, drawdownPct: 0 }
+  }
+
+  if (entry.startBalance <= 0) return { allowed: true, drawdownPct: 0 }
+  const drawdownPct = ((entry.startBalance - currentBalance) / entry.startBalance) * 100
+  return {
+    allowed: drawdownPct < MAX_DAILY_DRAWDOWN_PCT,
+    drawdownPct,
+  }
+}
+
+// ── Dual-Signal Confirmation ──────────────────────────────────────────────────
+// Checks if both SynthData and Quant agree on direction for the same horizon.
+function checkDualSignalConfirmation(
+  byMarket: Map<string, { synth_probability_up: number | null; polymarket_probability_up: number | null; current_outcome: string | null }>,
+  market: string,
+  side: 'up' | 'down'
+): { confirmed: boolean; sizeMultiplier: number } {
+  // Derive the counterpart market name
+  let counterpart: string
+  if (market.endsWith('-quant')) {
+    counterpart = market.replace('-quant', '') // quant → synthdata
+  } else {
+    counterpart = `${market}-quant`            // synthdata → quant
+  }
+
+  const other = byMarket.get(counterpart)
+  if (!other || other.synth_probability_up == null || other.polymarket_probability_up == null) {
+    return { confirmed: false, sizeMultiplier: 1.0 }
+  }
+
+  const otherEdgePp = (other.synth_probability_up - other.polymarket_probability_up) * 100
+  const otherOutcome = (other.current_outcome ?? '').trim().toLowerCase()
+  let otherSide: 'up' | 'down' | null = null
+  if (otherEdgePp >= EDGE_ENTRY_THRESHOLD_UP && otherOutcome === 'up') otherSide = 'up'
+  else if (otherEdgePp <= EDGE_ENTRY_THRESHOLD_DOWN && otherOutcome === 'down') otherSide = 'down'
+
+  if (otherSide === side) {
+    return { confirmed: true, sizeMultiplier: DUAL_SIGNAL_SIZE_MULTIPLIER }
+  }
+  return { confirmed: false, sizeMultiplier: 1.0 }
+}
 
 async function runEdgeTradingLoop(): Promise<void> {
   const rows = await getAllEnabledEdgeTrading()
@@ -1381,13 +1523,17 @@ async function runEdgeTradingLoop(): Promise<void> {
       console.error('[EdgeRunner] fetchMarketInfo failed', { market, slug: resolvedSlug, err })
       continue
     }
+    let secondsToExpiry = 0
     if (info.endDate) {
       const endMs = new Date(info.endDate).getTime()
       if (Number.isFinite(endMs) && endMs <= Date.now()) continue
-      const secondsToExpiry = Math.floor((endMs - Date.now()) / 1000)
+      secondsToExpiry = Math.floor((endMs - Date.now()) / 1000)
       if (horizon === '15m' && secondsToExpiry < 2 * 60) continue   // do not enter 15m in last 2 min
       if (horizon === '1h' && secondsToExpiry < 5 * 60) continue   // do not enter 1h in last 5 min
     }
+
+    // Dual-signal confirmation: check if both SynthData and Quant agree
+    const dualSignal = checkDualSignalConfirmation(byMarket, market, side)
 
     const slug = resolvedSlug
     const tokenID = side === 'up' ? info.clobTokenIds[0] : info.clobTokenIds[1]
@@ -1397,8 +1543,22 @@ async function runEdgeTradingLoop(): Promise<void> {
       if (userMarkets != null && !userMarkets.includes(market)) continue
       const alreadyEntered = await hasEnteredSlug(row.user_id, slug)
       if (alreadyEntered) continue
-      const orderSizeUsd = Number(row.order_size_usd)
+
+      // Daily drawdown check
+      const { allowed: drawdownOk, drawdownPct } = await checkDailyDrawdown(row.user_id, row.wallet_id)
+      if (!drawdownOk) {
+        console.warn('[EdgeRunner] DRAWDOWN STOP userId=%d drawdown=%.1f%% > %d%% — skipping',
+          row.user_id, drawdownPct, MAX_DAILY_DRAWDOWN_PCT)
+        continue
+      }
+
+      let orderSizeUsd = Number(row.order_size_usd)
       if (!Number.isFinite(orderSizeUsd) || orderSizeUsd < 1) continue
+
+      // Apply dual-signal multiplier
+      if (dualSignal.confirmed) {
+        orderSizeUsd = Math.round(orderSizeUsd * dualSignal.sizeMultiplier * 100) / 100
+      }
 
       try {
         const { client } = await getClobClientForWallet(row.wallet_id)
@@ -1422,7 +1582,21 @@ async function runEdgeTradingLoop(): Promise<void> {
           orderSizeUsd,
         })
         await setEdgeTradingLastEntered({ userId: row.user_id, slug })
-        console.log('[EdgeRunner] entered', { userId: row.user_id, market, slug, side, edgePp: edgePp.toFixed(2) })
+
+        // Enhanced logging with all context
+        console.log('[EdgeRunner] entered', {
+          userId: row.user_id, market, slug, side,
+          edgePp: edgePp.toFixed(2),
+          signalProbUp: synthUp.toFixed(4),
+          polyProbUp: polyUp.toFixed(4),
+          entryOdd: entryOdd.toFixed(3),
+          orderSizeUsd,
+          dualSignalConfirmed: dualSignal.confirmed,
+          sizeMultiplier: dualSignal.sizeMultiplier,
+          secondsToExpiry,
+          drawdownPct: drawdownPct.toFixed(1),
+          isQuantSignal: market.endsWith('-quant'),
+        })
       } catch (err) {
         console.error('[EdgeRunner] error', { userId: row.user_id, market, slug, err })
       }
